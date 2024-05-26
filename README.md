@@ -1,8 +1,7 @@
-# Infnet Modelos Preditivos
+# Modelos Preditivos - Infnet
 
 <br>
 
-Projeto final da disciplina do curso de pós-graduação MBA de Data Science\
-
+Projeto final da disciplina da pós-graduação [MBA de Data Science]{.underline}\
 Orientado pelo professor Orlando Fonseca Guilarte
 
