@@ -4,12 +4,11 @@ author: Claudia Tanaka (claudia.tanaka@al.infnet.edu.br)
 date:   "Atualizado em `r format(Sys.time(), '%d/%m/%Y')`"
 
 output:
-  html_notebook:
+  bookdown::html_document2:
     toc: yes
-    toc_depth: 4
     toc_float: yes
+    fig_caption: yes
 ---
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set( message=FALSE, warning=FALSE )
@@ -32,22 +31,17 @@ theme_update(
 )
 ```
 
-
 \
 
+Nessa disciplina, aprofundamos nossos conhecimentos em modelos preditivos, tarefa que é extremamente importante para o dia-a-dia de um cientista de dados. Agora iremos validar nosso conhecimento.
 
-# Introdução
-
-Nessa disciplina, aprofundamos nossos conhecimentos em modelos preditivos, tarefa que é extremamente importante para o dia-a-dia de um cientista de dados. Agora iremos validar nosso conhecimento. 
-
-Para a realização desse trabalho, será necessário utilizar a plataforma Knime e seus componentes para uso de algoritmos de Machine Learning. 
+Para a realização desse trabalho, será necessário utilizar a plataforma Knime e seus componentes para uso de algoritmos de Machine Learning.
 
 Escolha uma base de dados para realizar esse projeto, onde você utilizará algoritmos de classificação. Essa base necessita ter 4 (ou mais) variáveis de interesse e 2 (apenas 2!) classes (rótulos). Caso você tenha dificuldade para escolher uma base, o(a) professor(a) da disciplina irá designar uma para você.
 
-
 \
 
-# 1. Knime
+# Knime
 
 **No relatório final, anexe um printscreen evidenciando que o Knime está funcionando com os componentes**
 
@@ -55,27 +49,63 @@ Escolha uma base de dados para realizar esse projeto, onde você utilizará algo
 
 \
 
-# 2. XXX Base escolhida
+# XXX Base escolhida
 
-**Explique a motivação de uso da base escolhida. **
+**Explique a motivação de uso da base escolhida.**
 
+O objetivo deste projeto é prever a rotatividade (churn) de clientes em uma empresa de telecomunicações. Exploraremos modelos analíticos preditivos para avaliar a propensão ou risco de rotatividade dos clientes. Esses modelos podem gerar uma lista de clientes mais vulneráveis à rotatividade, para que as empresas possam trabalhar no sentido de retê-los.
 
-XXXXXXX
+Este projeto é baseado em um [conjunto de dados da IBM no Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn).
+
+```{r}
+df0 <- read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |> 
+  as_tibble() |> 
+  mutate(SeniorCitizen = if_else(SeniorCitizen==0, "No", "Yes")) |> 
+  mutate(across(where(is.character), as.factor)) |> 
+  # Ordena para que a classificação de referência seja "Yes"
+  mutate(Churn = fct_rev(Churn))
+```
+
+Só há lacunas nos dados de TotalCharges
+
+```{r}
+colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> rename(coluna=1,nulos=2) |> 
+  filter(nulos>0) |> arrange(desc(nulos))
+```
 
 \
 
-# 3. XXX Variáveis
+# Variáveis
 
 **Descreva as variáveis presentes na base. Quais são as variáveis? Quais são os tipos de variáveis (discreta, categórica, contínua)? Quais são as médias e desvios padrões?**
 
-```{r}
+Cada linha representa um cliente, cada coluna contém os seguintes atributos do cliente.
 
+Este conjunto de dados inclui as seguintes 20 [*features*]{.underline}:
+
+-   [dados demográficos]{.underline}: Gender (gênero), SeniorCitizen (flag de idoso), Partner (se tem parceiro), Dependents (se tem dependentes)
+
+-   [serviços assinados]{.underline}: PhoneService, MultipleLine, InternetService, OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies
+
+-   [informações da conta do cliente]{.underline}: CustomerID, Contract, PaperlessBilling (recebe a fatura online), PaymentMethod (método de pagamento), MonthlyCharges (mensalidade), TotalCharges (total incluindo mensalidade), Tenure (há quantos meses é cliente)
+
+O alvo é `Churn`, que é um flag binário sim ou não.
+
+```{r}
+glimpse(df0)
 ```
 
+Todas as variáveis são categóricas, exceto as duas variáveis numéricas contínuas: (1) mensalidade (`MonthlyCharges`); e (2) valor total incluindo mensalidade (`TotalCharges`) e a variável numérica discreta `Tenure` (há quantos meses é cliente)
+
+Estatísticas descritivas das variáveis numéricas:
+
+```{r}
+summary(df0 |> select(is.numeric))
+```
 
 \
 
-# 4. XXX Análise Exploratória
+# XXX Seleção de modelos e EDA
 
 **Em relação à base escolhida:**
 
@@ -85,31 +115,168 @@ XXXXXXXX
 
 \
 
-**(2) A base se encontra com as classes balanceadas? Cite uma maneira resolver no caso das classes estarem desbalanceadas. **
+**(2) A base se encontra com as classes balanceadas? Cite uma maneira resolver no caso das classes estarem desbalanceadas.**
 
+Neste conjunto de dados de mais de 7.000 clientes, 26% deles saíram no último mês. Isto é fundamental para o negócio de telecomunicações porque muitas vezes é mais caro adquirir novos clientes do que manter os existentes.
 
 ```{r}
 
 ```
 
-
 \
 
-# 5. XXX Regressão Linear x Logística
+# Regressão Linear x Logística
 
 **Qual a diferença entre uma regressão linear e a regressão logística?**
 
-XXXXXXXX
+Em resumo, a regressão linear é um método de modelagem de dados utilizado para prever uma variável contínua a partir de uma relação linear estimada com uma ou mais variáveis. A regressão logística é um caso específico de um modelo linear generalizado (GLM - generalized linear model) desenvolvido para estender a aplicação da regressão linear a um contexto em que se deseje prever uma variável categórica binária (sim/não, 0/1, evento/não evento).
+
+Assim, apesar de ambos serem modelos lineares, a principal diferença entre os dois métodos é que a regressão linear é utilizada para prever variáveis numéricas contínuas, enquanto a regressão logística é utilizada para prever variáveis categóricas binárias.
+
+\
+Mais especificamente, com base nos capítulos sobre Regressão Linear simples, Regressão Linear multivariável e Regressão Logística do livro *Practical Statistics for Data Scientists* de [Bruce et al (2020)](#references):
+
+A [**regressão linear simples**]{.underline} fornece um modelo da relação entre a magnitude de uma variável e a de uma segunda – por exemplo, à medida que X aumenta, Y também aumenta. Ou à medida que X aumenta, Y diminui. Coeficiente de correlação é outra forma de medir como duas variáveis estão relacionadas. A diferença é que enquanto a correlação mede a força de uma associação entre duas variáveis, a regressão quantifica a natureza da relação.
+
+A regressão linear simples estima quanto Y mudará quando Y mudar em um determinado valor. Com o coeficiente de correlação, as variáveis X e Y são intercambiáveis. Com a regressão, tentamos prever a variável Y a partir de X usando uma relação linear (ou seja, uma linha):
+
+$$
+Y = \beta_0 + \beta_1 X
+$$
+
+O símbolo $\beta_0$ é a constante que determina a intercecção com o eixo Y se X fosse igual a zero, e o símbolo $\beta_1$ é o coeficiente da inclinação de X. A variável Y é conhecida como [*target*]{.underline} ou variável dependente, pois depende de X. A variável X é conhecida como preditor, [*feature*]{.underline} ou variável independente.
+
+Considerando o gráfico de dispersão na Figura \@ref(fig:5-1) que mostra a largura da pétala de um tipo de flor (`Petal.Width`) versus o comprimento da sua pétala, pode-se visualizar como a largura está relacionada ao comprimento das pétalas. Parece que quanto maior o comprimento, maior a largura.
+
+```{r 5-1, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width*", fig.width=5, fig.asp=.7}
+iris |> 
+  filter(Species == "versicolor") |>
+  ggplot(aes(x=Petal.Length, y=Petal.Width)) +
+  geom_point() +
+  labs(title = "Gráfico de dispersão Sepal.Length x Sepal.Width",
+       subtitle = "Iris dataset")
+```
 
 \
 
-# 6. XXX Modelos de Classificação
+A regressão linear simples tenta encontrar a “melhor” linha reta ou a linha reta mais ajustada para prever a variável target Y=`Petal.Width` em função da feature X=`Petal.Length`:
+
+$$
+Petal.Width = \beta_0 + \beta_1 Petal.Length
+$$
+
+A linha de regressão deste modelo é exibida na Figura \@ref(fig:5-2).
+
+```{r 5-2, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width com regressão linear simples*", fig.width=5, fig.asp=.7}
+iris |> 
+  filter(Species == "versicolor") |>
+  ggplot(aes(x=Petal.Length, y=Petal.Width)) +
+  geom_smooth(method="lm", se=FALSE, formula="y~x") +
+  geom_point() +
+  labs(title = "Gráfico de dispersão Sepal.Length x Sepal.Width",
+       subtitle = "Iris dataset")
+```
+
+\
+
+É importante notar que a regressão apenas estima a variável target em função da feature preditora com base nos dados disponíveis. Não há na regressão inferência sobre relação de causa/efeito entre as variáveis (se uma causa a outra ou vice-versa ou se apenas ocorrem juntas).
+
+Como se vê na figura, em geral os dados não caem exatamente na linha reta que foi estimada pela regressão. Então a equação dessa linha de regressão deve incluir um termo de erro explícito que representa essas diferenças conhecidas como resíduos. Além disso, entre os estatísticos convenciona-se denotar os valores ajustados ou valores estimados por $\hat{Y}$ (Y com um chapéu), assim como nos coeficientes e no resíduo. Isso indica que os coeficientes e o resíduo também são estimados (não conhecidos) e essa estimativa inclui incerteza, enquanto o valor verdadeiro (sem o chapéu) seria exato:
+
+$$
+\hat{Y_i} = \hat{\beta_0} + \hat{\beta_1} X_i + \hat{\epsilon}_i
+$$
+
+A linha de regressão é ajustada de modo a minimizar a soma dos quadrados dos resíduos, ou seja, a diferença entre os valores reais e os valores previstos. A linha de regressão é a estimativa que minimiza a soma dos valores residuais quadrados, também chamada de soma residual dos quadrados (residual sum of squares) ou RSS:
+
+$$
+RSS = \sum_{i=1}^{n} (Y_i - \hat{Y_i})^2 = \sum_{i=1}^{n} (Y_i - \hat{\beta_0} - \hat{\beta_1} X_i)^2
+$$
+
+As estimativas de $\beta_0$ e $\beta_1$ são os valores que minimizam o RSS. O método de minimizar a soma dos resíduos quadrados RSS é denominado regressão de mínimos quadrados ou regressão de mínimos quadrados ordinários (OLS - ordinary least squares). É frequentemente atribuído a Carl Friedrich Gauss, o matemático alemão, mas foi publicado pela primeira vez pelo matemático francês Adrien-Marie Legendre em 1805.
+
+Quando existem vários preditores, a equação é simplesmente estendida para acomodá-los em um regressão linear múltipla:
+
+$$
+\hat{Y} = \hat{\beta_0} + \hat{\beta_1} X_1 + \hat{\beta_2} X_2 + \ldots + \hat{\beta_q} X_q + \epsilon
+$$
+
+Em vez de uma linha, tem-se um modelo linear – a relação entre cada coeficiente e sua variável (feature) é linear.
+
+Todos os outros conceitos da regressão linear simples, como o ajuste por mínimos quadrados e a definição de valores ajustados e resíduos, estendem-se à configuração de regressão linear múltipla.
+
+\
+A [**regressão logística**]{.underline} é análoga à regressão linear com múltiplas variáveis, exceto que o resultado é [binário]{.underline}. Várias transformações são empregadas para converter o problema em algo no qual um modelo linear possa ser ajustado. A regressão logística é uma abordagem de modelo estruturado, em vez de uma abordagem centrada em dados. Devido à sua velocidade de processamento com menor custo computacional e sua rapidez na classificação de novos dados, é um método bastante adotado.
+
+Os principais ingredientes para a regressão logística são a função de resposta logística (*logistic response function*) e o logit, no qual mapeia-se uma probabilidade (entre 0 e 1) para uma escala mais ampla, adequada para modelagem linear. O primeiro passo é pensar na variável de resultado não como um rótulo binário, mas como a probabilidade $p$ de que o rótulo seja “1”. Ingenuamente, podemos ficar tentados a modelar $p$ como uma função linear das variáveis preditoras:
+
+$$
+p = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q
+$$
+
+No entanto, ajustar esta função não garante que $p$ resulte em um número entre 0 e 1, como tem que acontecer com uma probabilidade. Então, é necessário modelar $p$ aplicando uma "função de resposta logística" ([*logistic response function*]{.underline}) aos preditores:
+
+$$
+p = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q)}}
+$$
+
+Essa transformação garante que $p$ permaneça entre 0 e 1.
+
+Para tirar a expressão exponencial do denominador, pode-se expressar essa equação em termos de "chances" ou [*odds*]{.underline} em vez de probabilidade.
+
+A chance, conceito familiar aos apostadores do mundo todo, é a razão entre “sucessos” (1) e “fracassos” (0). Na linguagem de probabilidade, "chances" são a probabilidade de um evento ocorrer dividida pela probabilidade de o evento não ocorrer. Por exemplo, se a probabilidade de um cavalo ganhar for $0,5$, a probabilidade de “não ganhar” é $(1 – 0,5) = 0,5$ e as chances são de 1 pra 1, então:
+
+$$
+Odds(Y=1) = \frac{p}{1-p}
+$$
+
+É possível obter a probabilidade a partir das chances usando o inverso da função de chances:
+
+$$
+p = \frac{Odds(Y=1)}{1 + Odds(Y=1)}
+$$
+
+Combinando isso com a [*logistic response function*]{.underline} vista anteriormente, tem-se que:
+
+$$
+Odds(Y=1) = e^{\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q}
+$$
+
+Finalmente, tirando o logaritmo natural de ambos os lados, obtém-se uma equação que é uma função linear dos preditores:
+
+$$
+log(Odds(Y=1)) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q
+$$
+
+A [função log-odds]{.underline}, também conhecida como [função logit]{.underline}, mapeia a probabilidade $p$ de $(0,1)$ para qualquer valor $(-\infty, +\infty)$. Assim o círculo de transformação se fecha, aplicando um modelo linear para prever uma probabilidade, que por sua vez pode ser mapeado para um rótulo de classe aplicando-se uma regra de corte – qualquer observação com uma probabilidade maior que o ponto de corte é classificado como 1.
+
+```{r 5-3, echo=FALSE, fig.cap="*Gráfico de função logit que coloca uma probabilidade em uma escala aplicável a um modelo linear.*", fig.width=5, fig.asp=.7}
+# Plot logit(p) x p
+ggplot(data=tibble(x=seq(0.01, 0.99, by=0.01), 
+                   y=log(seq(0.01, 0.99, by=0.01)/(1-seq(0.01, 0.99, by=0.01)))),
+       aes(x=x, y=y)) +
+  geom_line(color="blue") +
+  labs(x="p", y="logit(p)")
+```
+
+\
+
+A resposta na função de regressão logística é o log das probabilidades de um resultado binário de 1. Pretende-se extrair apenas o resultado binário, não o log das probabilidades, portanto, são necessários métodos estatísticos especiais para ajustar a equação.
+
+\
+
+# XXX Modelos de Classificação
+
+```         
+library(glm)  # Logistic regression
+library(rpart)  # Decision Tree
+library(ranger) # Random Forest
+library(nnet, keras)   # Redes Neurais
+```
 
 **Com a base escolhida:**
 
-
-
-## 6.1 XXX Etapas de um modelo de classificação
+## XXX Etapas de um modelo de classificação
 
 **(1) Descreva as etapas necessárias para criar um modelo de classificação eficiente.**
 
@@ -117,7 +284,7 @@ XXXXXXXXXX
 
 \
 
-## 6.2 XXX Regressão logística
+## XXX Regressão logística
 
 **Treine um modelo de regressão logística para realizar a classificação.**
 
@@ -133,18 +300,15 @@ XXXXXXXXXX
 
 ```
 
-
 \
 
-## 6.3 XXX Árvore de Decisão
+## XXX Árvore de Decisão
 
 **Treine um modelo de árvore de decisão para realizar a classificação.**
-
 
 ```{r}
 
 ```
-
 
 \
 
@@ -156,7 +320,7 @@ XXXXXXXXXX
 
 \
 
-## 6.4 XXX Random Forest
+## XXX Random Forest
 
 **Treine um modelo de random forest para realizar a classificação.**
 
@@ -174,7 +338,7 @@ XXXXXXXXXX
 
 \
 
-## 6.5 XXX Redes Neurais
+## XXX Redes Neurais
 
 **Treine um modelo de rede neural rasa para realizar a classificação.**
 
@@ -190,11 +354,9 @@ XXXXXXXXXX
 
 ```
 
-
 \
 
-
-# 7. XXX Melhor modelo
+# XXX Melhor modelo
 
 **Em relação à questão anterior, qual o modelo deveria ser escolhido para uma eventual operação.**
 
@@ -202,8 +364,7 @@ XXXXXXXX
 
 \
 
-
-# 8. XXX Deep Learning
+# XXX Deep Learning
 
 **Descreva em suas palavras o que é Deep Learning.**
 
@@ -215,11 +376,10 @@ XXXXXXXX
 
 *Antes de fazer sua entrega, reúna todos os arquivos relativos ao seu Projeto de Disciplina em um único arquivo no formato .zip e poste no Moodle. Utilize o seu nome para nomear o arquivo, identificando também a disciplina, como no exemplo: “nomedoaluno_nomedadisciplina_pd.zip”.*
 
+\
+
+# Referências Bibliográficas {#references}
 
 \
 
-# Referências Bibliográficas
-
-
-\
-
+Bruce, P. Bruce, A. Gedeck, P. 2020. "*Practical Statistics for Data Scientists, 2nd Edition*". (360). O'Reilly Media. ISBN-13: 978-1492072942.
