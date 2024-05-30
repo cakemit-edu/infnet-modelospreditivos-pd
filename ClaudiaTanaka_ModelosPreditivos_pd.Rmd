@@ -49,7 +49,7 @@ Escolha uma base de dados para realizar esse projeto, onde você utilizará algo
 
 \
 
-# XXX Base escolhida
+# Base escolhida
 
 **Explique a motivação de uso da base escolhida.**
 
@@ -267,20 +267,113 @@ A resposta na função de regressão logística é o log das probabilidades de u
 
 # XXX Modelos de Classificação
 
-```         
-library(glm)  # Logistic regression
-library(rpart)  # Decision Tree
-library(ranger) # Random Forest
-library(nnet, keras)   # Redes Neurais
-```
+**\
+Com a base escolhida:**
 
-**Com a base escolhida:**
+\
 
-## XXX Etapas de um modelo de classificação
+## Etapas de modelagem
 
-**(1) Descreva as etapas necessárias para criar um modelo de classificação eficiente.**
+**Descreva as etapas necessárias para criar um modelo de classificação eficiente.**
 
-XXXXXXXXXX
+No artigo *"To Explain or to Predict?"* ([Shmueli, 2010](#references)), o autor distingue entre o uso de modelos estatísticos para explicar causalidade ou projetar um processo ou sistema e examina as implicações das diferenças entre o objetivo de explicar causalidade (explicativo) versus projetar (preditivo) sobre o processo de modelagem.
+
+Com base nas etapas descritas na seção "*2. Two Modeling Paths*" do artigo, um processo genérico de modelagem consiste em:
+
+1.  Definir um objetivo
+
+2.  Desenhar o estudo e coletar os dados
+
+3.  Preparar os dados
+
+4.  Analisar os dados (EDA)
+
+5.  Escolher as variáveis
+
+6.  Escolher os métodos
+
+7.  Avaliar, validar e selecionar os modelos
+
+8.  Aplicar o modelo e descrever resultados
+
+\
+Segundo Shmueli, modelagem preditiva e modelagem explicativa são frequentemente confundidos, mas a distinção entre as duas tem um grande impacto em cada etapa do processo de modelagem estatística e nas suas consequências.
+
+Em muitos campos científicos, tais como economia, psicologia, educação e ciência do meio ambiente, os modelos estatísticos são usados quase exclusivamente para explicação causal. Em áreas como processamento de linguagem natural (NLP) e bioinformática, o foco está na previsão empírica com apenas uma relação superficial e indireta com a explicação causal. E, ainda, noutros campos de investigação, como a epidemiologia, a ênfase na explicação causal versus a previsão empírica é mais obscura.
+
+Na [modelagem explicativa]{.underline} modelos estatísticos são aplicados a dados para testar uma hipótese de causa e efeito derivada de um modelo causal teórico. Nesses modelos, presume-se que um conjunto de fatores medidos pelas variáveis $X$ causa um efeito subjacente, medido pela variável $Y$. Os tipos de modelos estatísticos utilizados para testar hipóteses causais nas ciências sociais são quase sempre modelos baseados em associações aplicados a dados observados, sendo a regressão o método mais rotineiramente aplicado.
+
+A justificativa para esta abordagem é que a própria teoria fornece a causalidade. Em outras palavras, o papel da teoria é muito forte e a confiança nos dados e na modelagem estatística ocorre estritamente sob a ótica do modelo teórico. Nesse tipo de modelagem, a inferência estatística leva a conclusões sobre o tamanho do efeito e significância estatística das hipóteses causais. Finalmente, as conclusões estatísticas levam a conclusões de pesquisa, muitas vezes acompanhadas de recomendações de políticas públicas.
+
+[Modelagem preditiva]{.underline} é o processo de aplicação de um modelo estatístico ou algoritmo de mineração de dados com o propósito de prever novas ou futuras ocorrências. Especificamente, no caso da previsão determinística (Geisser, 1993, p. 31), o objetivo é prever o valor de saída $Y$ para novas observações, dados seus valores de entrada $X$. Esta definição também inclui a projeção de séries temporais, onde as observações até o momento $t$ (a entrada) são usadas para prever valores futuros no tempo $t + k,\ k > 0$ (a saída). Modelo preditivo é qualquer método que faz previsões, independentemente do método adotado e do tipo de resultado esperado: classificação ou regressão.
+
+Por que deve-se diferenciar entre explicar e projetar? Porque os dados disponíveis não são representações exatas do processo ou sistema subjacente. A operacionalização de teorias em modelos estatísticos e dados mensuráveis cria uma disparidade entre a capacidade de explicar fenômenos conceitualmente e a capacidade de gerar previsões mensuráveis.
+
+Tome-se como ilustração, uma teoria que postula que o fenômeno $X$ causa o fenômeno $Y$, através da função $F$, tal que $Y = F(X)$. $F$ é frequentemente representada por um diagrama, um conjunto de declarações qualitativas, um gráfico (e.g., um gráfico de oferta vs demanda) ou fórmulas matemáticas. As variáveis mensuráveis $x$ e $y$ são operacionalizações de $X$ e $Y$, respectivamente. A operacionalização de $F$ em um modelo estatístico $f$ , como $E(y) = f(x)$, é feita considerando $F$ sob a ótica do desenho do estudo teórico e de restrições práticas do contexto sistêmico, como padrões adotados em um mercado ou regulamentação existente. Como $F$ geralmente não é suficientemente detalhado para levar a um único $f$, muitas vezes um conjunto de modelos $f$ pode ser considerado.
+
+No contexto preditivo, considera-se apenas $x$, $y$ e $f$.
+
+A diferença surge porque o objetivo da modelagem explicativa é aproximar $f$ e $F$ o máximo possível para que a inferência estatística se aplique às hipóteses teóricas. Os dados $x,y$ são ferramentas para estimar $f$, que por sua vez são usados para testar as hipóteses causais. Em contraste, na modelagem preditiva as entidades de interesse são $x$ e $y$, e a função $f$ é usada como ferramenta para gerar boas previsões de novos valores de $y$. De fato, mesmo que a relação causal subjacente seja de fato $Y = F(X)$, é comum que uma função diferente de $\hat{f}(x)$ e dados diferentes de $x_i, ..., x_p$ possam gerar previsões melhores.
+
+Assim, há quatro aspectos em que a diferença entre os dois objetivos de modelagem se manifestam:
+
+1.  [Causa x Relação]{.underline}: Na modelagem explicativa $f$ representa uma função causal e assume-se que $x$ causa $y$. Na modelagem preditiva $f$ captura a relação entre $x$ e $y$.
+
+2.  [Teoria x Dados]{.underline}: Na modelagem explicativa, $f$ é cuidadosamente construído com base em $F$ de forma a facilitar a interpretação da relação estimada entre $x$ e $y$ e o teste das hipóteses causais. Na modelagem preditiva, $f$ geralmente é construído a partir dos dados. A interpretabilidade da relação entre $x$ e $y$ não é necessária, embora às vezes a transparência de $f$ seja desejável.
+
+3.  [Retrospectivo x Prospectivo]{.underline}: A modelagem preditiva é prospectiva, pois $f$ é construída para prever novas observações. Em contraste, a modelagem explicativa é retrospectiva, na medida em que $f$ é usada para testar um conjunto de hipóteses já existente.
+
+4.  [Viés x Variabilidade]{.underline}: O erro de previsão esperado para uma nova observação pode ser decomposto em três partes: $EPE = Viés + Var(\hat{f}(x)) + Var(Y)$, onde o Viés é oriundo da má especificação do modelo $f$, a Variabilidade da Estimativa (o segundo componente) é oriundo da diferença entre a amostra de dados e a população total e o último componente é o resíduo que resta mesmo que o modelo tenha sido corretamente especificado e estimado. Na modelagem explicativa, o foco está em minimizar o Viés para obter a representação mais precisa da teoria subjacente. A modelagem preditiva procura minimizar a combinação de Viés e Variabilidade da Estimativa, podendo sacrificar a acurácia teórica para melhorar a acurácia empírica.
+
+\
+
+**(1) Definir um objetivo**
+
+Esta é uma etapa auto-explicativa, mas ressalta-se que é importante estabelecer *a priori* se o objetivo é de natureza explicativa ou preditiva. A resposta a essa pergunta terá implicações em todas as etapas subsequentes do processo de modelagem.
+
+\
+
+**(2) Desenhar o estudo**
+
+XXXXXXX
+
+\
+
+**(3) Preparar os dados**
+
+XXXXXX
+
+\
+
+**(4) Analisar os dados (EDA)**
+
+XXXXXX
+
+\
+
+**(5) Escolher as variáveis**
+
+\
+
+**(6) Escolher os métodos**
+
+XXXXXX
+
+\
+
+**(7) Avaliar, validar e selecionar os modelos**
+
+XXXXXX
+
+\
+
+**(8) Aplicar o modelo e descrever os resultados**
+
+XXXXXXX
+
+\
+
+Embora não seja o foco deste artigo, um terceiro tipo de modelagem mencionado pelo autor, que é o mais comumente utilizado por estatísticos, é a [modelagem descritiva]{.underline}. Este tipo de modelagem visa resumir ou representar a estrutura de dados de forma compacta. Diferente modelagem explicativa, na modelagem descritiva a confiança em uma teoria causal subjacente está ausente ou incorporada de forma menos formal. Além disso, o foco está no nível mensurável e não no nível da construção teórica. Ao contrário da modelagem preditiva, a modelagem descritiva não visa a previsão. O ajuste de um modelo de regressão pode ser descritivo se for usado para capturar a associação entre as variáveis dependentes e independentes, e não para inferência causal ou para previsão. Mencionamos esse tipo de modelagem para evitar confusão com modelagem causal explicativa e preditiva, e também para destacar o diferentes abordagens de estatísticos e não estatísticos. Modelagem estatística descritiva, onde o propósito é capturar a estrutura subjacente dos dados, e que é o mais comumente desenvolvido dentro do campo de estatística, não é comumente usado para construção de teoria e testes em outras áreas de pesquisa científica.
 
 \
 
@@ -289,7 +382,7 @@ XXXXXXXXXX
 **Treine um modelo de regressão logística para realizar a classificação.**
 
 ```{r}
-
+# library(glm)  # Logistic regression model
 ```
 
 \
@@ -307,7 +400,7 @@ XXXXXXXXXX
 **Treine um modelo de árvore de decisão para realizar a classificação.**
 
 ```{r}
-
+# library(rpart)  # Decision Tree 
 ```
 
 \
@@ -325,7 +418,7 @@ XXXXXXXXXX
 **Treine um modelo de random forest para realizar a classificação.**
 
 ```{r}
-
+# library(ranger) # Random Forest 
 ```
 
 \
@@ -343,7 +436,7 @@ XXXXXXXXXX
 **Treine um modelo de rede neural rasa para realizar a classificação.**
 
 ```{r}
-
+# library(nnet, keras)   # Redes Neurais
 ```
 
 \
@@ -382,4 +475,12 @@ XXXXXXXX
 
 \
 
-Bruce, P. Bruce, A. Gedeck, P. 2020. "*Practical Statistics for Data Scientists, 2nd Edition*". (360). O'Reilly Media. ISBN-13: 978-1492072942.
+Bruce, P., Bruce, A. and Gedeck, P. (2020). "*Practical Statistics for Data Scientists : 50+ Essential Concepts Using R and Python."* Sebastopol: O’reilly Media, Incorporated. ISBN-13: 978-1492072942.
+
+\
+
+Geisser, S. (1993). *"Predictive Inference: An Introduction."* Chapman and Hall, Londres. [DOI: 10.1201/9780203742310](https://doi.org/10.1201/9780203742310)
+
+\
+
+Shmueli, G. (2010). "*To Explain or to Predict?*" *Statistical Science*, Institute of Mathematical Statistics [[online](https://projecteuclid.org/journals/statistical-science/volume-25/issue-3/To-Explain-or-to-Predict/10.1214/10-STS330.full)] v. 25, n. 3, p. 289–310. [DOI: 10.1214/10-STS330]
