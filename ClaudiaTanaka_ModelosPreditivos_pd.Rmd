@@ -15,7 +15,7 @@ knitr::opts_chunk$set( message=FALSE, warning=FALSE )
 options(scipen=999) # "Desliga" notação científica. 
 
 # PACOTES 
-library(tidyverse)
+library(tidymodels)
 
 # PRETTY DOC
 library(gt)
@@ -68,14 +68,23 @@ df0 <- read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |>
   mutate(SeniorCitizen = if_else(SeniorCitizen==0, "No", "Yes")) |> 
   mutate(across(where(is.character), as.factor)) |> 
   # Ordena para que a classificação de referência seja "Yes"
-  mutate(Churn = fct_rev(Churn))
+  mutate(Churn = forcats::fct_rev(Churn))
+
+dim(df0)
 ```
 
 Só há lacunas nos dados de TotalCharges
 
 ```{r}
-colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> rename(coluna=1,nulos=2) |> 
+colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> 
+  rename(coluna=1,nulos=2) |> 
   filter(nulos>0) |> arrange(desc(nulos))
+```
+
+Como são apenas 11 observações entre 7.043, optamos por não aplicar uma metodologia de imputação, mas apenas excluir estas observações da base de dados.
+
+```{r}
+df1 <- df0 |> na.omit()
 ```
 
 \
@@ -86,7 +95,7 @@ colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> rename(coluna=
 
 Cada linha representa um cliente, cada coluna contém os seguintes atributos do cliente.
 
-Este conjunto de dados inclui as seguintes 20 [*features*]{.underline}:
+Este conjunto de dados inclui as seguintes 20 variáveis explicativas (features):
 
 -   [dados demográficos]{.underline}: Gender (gênero), SeniorCitizen (flag de idoso), Partner (se tem parceiro), Dependents (se tem dependentes)
 
@@ -97,7 +106,7 @@ Este conjunto de dados inclui as seguintes 20 [*features*]{.underline}:
 O alvo é `Churn`, que é um flag binário sim ou não.
 
 ```{r}
-glimpse(df0)
+glimpse(df1)
 ```
 
 Todas as variáveis são categóricas, exceto as duas variáveis numéricas contínuas: (1) mensalidade (`MonthlyCharges`); e (2) valor total incluindo mensalidade (`TotalCharges`) e a variável numérica discreta `Tenure` (há quantos meses é cliente)
@@ -114,15 +123,17 @@ summary(df0 |> select(is.numeric))
 
 **Em relação à base escolhida:**
 
+## Validação cruzada {#validacao-cruzada}
+
 **(1) Você irá comparar alguns modelos para prever as classes. Descreva como a validação cruzada pode ser usada para comparar modelos de maneira justa. Descreva o procedimento e como uma métrica final é calculada.**
 
-Digamos que viés seja a diferença entre os padrões ou relacionamentos existentes em um conjunto de dados e os tipos de padrões que um modelo de machine learning pode captar e reproduzir. Muitos modelos "*black-box*" (de difícil interpretação) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos (redes neurais, random forest). Outros modelos (como regressão linear/logística, análise discriminante e outros) não são tão adaptáveis e são considerados modelos de alto viés.
+Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
 
-Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treinamento. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para esse conjunto de treinamento, mas pode não funcionar tão bem para novas observações. Testar as projeções no próprio conjunto de treinamento sempre resultará em uma estimativa artificialmente otimista de performance e não garante uma boa performance em novas observações. Isso é conhecido como *overfitting*.
+Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treinamento. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treinamento, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treinamento sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
 
-Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra separada dos dados à qual o modelo não foi exposto durante sua construção – separação dos dados em subconjunto de treinamento e subconjunto de teste.
+Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treinamento e subconjunto de teste.
 
-A criação de uma amostra separada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treinamento e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treinamento e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
+A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treinamento e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treinamento e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
 
 ![Figura 4.1 Esquema de particionamento de dados com reamostragem.](.imgs/Resampling.png){#fig4-1 width="500"}
 
@@ -153,13 +164,13 @@ Para validação cruzada 3-fold, as três iterações de reamostragem são ilust
 
 Quando $V = 3$, os conjuntos de análise são 2/3 do conjunto de treinamento e cada conjunto de avaliação é um 1/3. A estimativa final de reamostragem calcula a média das estatísticas de performance de cada uma das sub-amostras. Usar $V = 3$ é bom para ilustrar a mecânica da validação cruzada, mas é ruim na prática porque é muito pequeno para gerar estimativas confiáveis. O Teorema do Limite Central sugere que a média de várias estatísticas de desempenho de modelos ajustados em diferentes sub-amostras de dados tende a ter uma distribuição normal. Isso significa que quanto mais sub-amostras forem usadas, mais confiável será a estimativa da média.
 
-Na prática, os valores de V são mais frequentemente $5$ ou $10$; geralmente prefere-se [**validação cruzada 10-fold**]{.underline} como padrão porque a parcela de usada na análise ou treino será grande o suficiente para bons resultados na maioria dos casos.
-
-\
+Na prática, os valores de V são mais frequentemente $5$ ou $10$; geralmente prefere-se [**validação cruzada 10-fold**]{.underline} como padrão porque a parcela de observações usada na análise ou treino será grande o suficiente para bons resultados na maioria dos casos.
 
 Há variações na aplicação de validações cruzadas, como a [validação cruzada com repetição]{.underline}, que cria $R$ repetições de uma validação cruzada V-fold e a [validação cruzada *leave-one-out*]{.underline} (LOOCV), que é um caso especial de validação cruzada $V$-fold com $V = n$, onde $n$ modelos são treinados com $n-1$ observações e cada modelo projeta a observação excluida (técnica utilizada quase exclusivamente quando há amostras muito pequenas de dados). A [validação cruzada de Monte Carlo]{.underline} é uma variação em que a proporção dos dados é determinada aleatoriamente a cada fold. Isso resulta em conjuntos de avaliação que não são mutuamente exclusivos.
 
 \
+
+## XXX EDA
 
 **(2) A base se encontra com as classes balanceadas? Cite uma maneira resolver no caso das classes estarem desbalanceadas.**
 
@@ -316,38 +327,37 @@ A resposta na função de regressão logística é o log das probabilidades de u
 **\
 Com a base escolhida:**
 
-\
-
 ## Etapas de modelagem
 
 **Descreva as etapas necessárias para criar um modelo de classificação eficiente.**
 
-Kuhn e Silge (2023) contêm uma descrição do processo genérico de modelagem preditiva dividido em etapas que podem ser descritas da seguinte forma:
+[Kuhn e Silge (2023)](#references) propõem uma descrição do processo genérico de modelagem preditiva que pode ser dividido nos seguintes passos:
 
 1.  Definir o objetivo
 2.  Analisar os dados (Exploratory Data Analysis - EDA)
 3.  Transformar os dados para modelagem (*Feature Engineering*)
 4.  Ajustar e selecionar modelo(s)
 5.  Testar projeções
+6.  Documentar e comunicar conclusões
 
 **\
 \
 (1) Definir o objetivo**
 
-Esta etapa não está formalmente definida no processo descrito por Kuhn e Silge (2023), porém considero que seja extremamente importante destacar que um processo de modelagem se inicie por uma definição do seu objetivo específico. Sem isso, o cientista de dados arrisca se perder nas etapas seguintes - especialmente na análise exploratória dos dados (EDA).
+Esta etapa não está formalmente definida no processo descrito por [Kuhn e Silge (2023)](#references), porém considero que seja extremamente importante destacar que um processo de modelagem se inicie por uma definição do seu objetivo específico. Sem isso, o cientista de dados arrisca se perder nas etapas seguintes – especialmente na análise exploratória dos dados (EDA).
 
-É especialmente importante definir se o objetivo da modelagem é fazer previsões (modelagem preditiva) ou explicar relações causais (modelagem explicativa). Shmueli (2010) descreve as diferenças entre modelos preditivos e modelos explicativos e suas implicações para o processo de modelagem no artigo "*To Explain or to Predict?*". A depender do objetivo da modelagem, diferentes escolhas podem ser feitas, por exemplo, sobre a seleção das variáveis dependentes ou sobre a avaliação da performance do modelo. Em grandes linhas, as etapas do processo de modelagem podem ser aplicadas tanto à modelagem preditiva quanto explicativa, porém a descrição de cada etapa a seguir é voltada para modelagem preditiva, dado o contexto desta disciplina de Modelos Preditivos.
+É especialmente importante definir se o objetivo da modelagem é fazer previsões ([modelagem preditiva]{.underline}) ou explicar relações causais entre as variáveis ([modelagem explicativa]{.underline}). [Shmueli (2010)](#references) descreve as diferenças entre modelos preditivos e modelos explicativos e suas implicações para o processo de modelagem no artigo "*To Explain or to Predict?*". A depender do objetivo da modelagem, diferentes escolhas podem ser feitas, por exemplo, sobre a seleção das variáveis dependentes ou sobre a avaliação da performance do modelo. Em grandes linhas, as etapas do processo de modelagem podem ser aplicadas tanto à modelagem preditiva quanto explicativa, porém a descrição de cada etapa a seguir é voltada para modelagem preditiva, dado o contexto desta disciplina de Modelos Preditivos.
 
-Acredito haver potencial iteração entre a definição do objetivo e etapa seguinte de análise exploratória dos dados (EDA). É possível iniciar-se uma modelagem a partir de um objetivo e alterar ou ajustar o objetivo com base nas descobertas extraídas da análise exploratória de dados. Porém, é importante que as etapas seguintes – Feature Engineering, Ajuste e seleção do modelo e Teste das projeções – sejam orientadas pelo objetivo específico predeterminado.
+Acredito que possa haver iteração entre a definição do objetivo e o passo seguinte de análise exploratória dos dados (EDA). É possível iniciar-se uma modelagem a partir de um objetivo e alterar ou ajustar o objetivo com base nas descobertas extraídas da análise exploratória de dados. Porém, é importante que os passos seguintes – Feature Engineering, Ajuste e seleção do modelo e Teste das projeções – sejam orientadas pelo objetivo específico predeterminado.
 
 A definição do objetivo deve especificar qual pergunta ou perguntas serão respondidas pelo processo de modelagem.
 
-No caso concreto deste projeto, nosso objetivo original é avaliar a propensão ou risco de rotatividade dos clientes de uma empresa de telecomunicações. Nosso projeto fará uma modelagem para classificação dos clientes entre contratos cancelados ou não cancelados, gerando um modelo final que ajudará a empresa a identificar clientes altamente propensos ao cancelamento de forma que sua área comercial possa atuar especificamente sobre estes clientes. Adicionalmente, gostaríamos de poder reportar a importância relativa das variáveis explicativas do modelo final para identificar os fatores mais influenciadores do risco de cancelamento do cliente.
+No caso concreto deste projeto, por exemplo, o objetivo é avaliar a propensão ou risco de rotatividade dos clientes de uma empresa de telecomunicações. O projeto fará uma modelagem para classificação dos clientes entre contratos cancelados ou não cancelados, gerando um modelo final que ajudará a empresa a identificar clientes altamente propensos ao cancelamento de forma que sua área comercial possa atuar especificamente sobre estes clientes. Adicionalmente, gostaríamos de poder reportar a importância relativa das variáveis explicativas do modelo final para identificar os fatores mais influenciadores do risco de cancelamento do cliente.
 
 \
 **(2) Analisar os dados (EDA)**
 
-Assumindo-se que o analista esteja partindo de um conjunto pré-selecionado de dados (i.e., desconsiderando-se etapas de desenho de coleta de dados primários ou experimentos), há um processo iterativo entre a avaliação e a visualização de dados onde diferentes descobertas levam a mais perguntas e talvez buscas paralelas de dados adicionais para obter maior compreensão sobre o problema.
+Assumindo-se que o analista esteja partindo de um conjunto pré-selecionado de dados (i.e., desconsiderando-se etapas de desenho de coleta de dados primários ou experimentos), há um processo iterativo entre avaliação e visualização de dados onde diferentes descobertas levam a mais perguntas e talvez buscas paralelas de dados adicionais para obter maior compreensão sobre o problema.
 
 É comum que esta etapa tome mais tempo do que o restante do processo de modelagem. [Wickham, e Grolemund (2023)](#0) contém uma excelente ilustração do processo geral de análise de dados, reproduzida na figura abaixo. A leitura (*Import*) e a limpeza/preparação (*Tidy*) dos dados são mostradas como as etapas iniciais. As etapas analíticas de transformação, visualização e modelagem descritiva geralmente requerem múltiplas iterações antes que se possa, finalmente apresentar os resultados (*Communicate*).
 
@@ -361,14 +371,16 @@ Outra boa pergunta a ser respondida nessa etapa é se os dados são relevantes p
 
 Nesta etapa é possível, inclusive, aplicar técnicas de modelagem especificamente para esclarecer a relação entre as variáveis e descobrir a melhor maneira de representar essa relação dentro do modelo preditivo, como por exemplo *Locally Estimated Scatterplot Smoothing* – LOESS.
 
-A etapa de análise de dados, deve estabelecer qual ou quais técnicas de modelagem serão aplicadas (Regressão Logística, Decision Tree, Random Forest, Redes Neurais, etc. ou um "*ensemble*" de diferentes técnicas?) para atingir o objetivo determinado. E finalmente, deve-se definir expectativas claras de como o desempenho (e o sucesso) da modelagem serão avaliados. Pelo menos uma métrica de desempenho (e.g. precisão de classificação, taxas de verdadeiro e falso positivo, erro quadrático médio, entre outras) deve ser identificada com objetivos realistas do que pode ser alcançado. Os benefícios e desvantagens relativos dessas métricas devem ser ponderados. Também é importante que a métrica seja pertinente; o alinhamento com os objetivos mais amplos da análise de dados é crítico.
+A etapa de análise de dados, deve estabelecer qual técnica ou técnicas de modelagem serão aplicadas (Regressão Logística, Decision Tree, Random Forest, Redes Neurais, etc. ou mesmo um "*ensemble*" de diferentes técnicas?) para atingir o objetivo determinado.
 
-Nessa etapa também deve-se definir a estratégia a ser adotada para a validação do modelo.
+E finalmente, deve-se definir expectativas claras de como o desempenho (e o sucesso) da modelagem serão avaliados. Pelo menos uma métrica de desempenho deve ser identificada com objetivos realistas do que pode ser alcançado. Os benefícios e desvantagens relativos dessas métricas devem ser ponderados. Também é importante que a métrica seja pertinente – seu alinhamento com os objetivos da análise de dados é crítico.
+
+Nessa etapa também deve-se definir a estratégia de particionamento dos dados a ser adotada para a validação do modelo. Os dados serão separados em treinamento e teste? Se sim, é recomendável que as análises exploratórias sejam feitas sobre o conjunto de dados de treinamento, isolando os dados de teste desde o início da modelagem. Será aplicada alguma metodologia de reamostragem? Como mencionado na pergunta [4.1 Validação cruzada](#validacao-cruzada), pode-se escolher algum tipo de validação cruzada, além de outras metodologias desenhadas para mitigar problemas específicos de tamanho ou distribuição dos dados da amostra de treinamento, como *bootstrapping*.
 
 \
 **(3) Feature Engineering**
 
-O entendimento obtido com EDA auxiliará na criação de termos ou componentes de modelo específicos para a modelagem dos dados observados. A transformação dos dados pode incluir metodologias complexas (por exemplo, *Principal Component Analysis - PCA*) ou recursos mais simples (combinando uma medida de altura e outra de largura em uma nova variável da área).
+Os insights de EDA e as decisões tomadas naquela etapa auxiliarão na criação de termos ou componentes de modelo específicos para a modelagem dos dados observados. A transformação dos dados pode incluir metodologias complexas (por exemplo, *Principal Component Analysis - PCA*) ou recursos mais simples (combinando uma medida de altura e outra de largura em uma nova variável da área).
 
 \
 **(4) Ajustar e selecionar modelo(s)**
@@ -466,7 +478,7 @@ XXXXXXXX
 
 \
 
-# XXX Deep Learning
+# Deep Learning
 
 **Descreva em suas palavras o que é Deep Learning.**
 
@@ -474,7 +486,7 @@ Deep Learning é uma categoria de Machine Learning que usa métodos de Redes Neu
 
 Se uma Rede Neural tem muitos neurônios (frequentemente milhões ou mais) e se esses neurônios são organizados em muitas camadas, geralmente com funcionalidades variadas, o algoritmo é chamado de algoritmo de Deep Learning.
 
-Processamento de Linguagem Natural (PNL), reconhecimento avançado de imagem e complementação de código de programação são exemplos de aplicações que usam Deep Learning.
+Processamento de Linguagem Natural (NLP), reconhecimento avançado de imagem e complementação de código de programação são exemplos de aplicações que usam Deep Learning.
 
 \
 
