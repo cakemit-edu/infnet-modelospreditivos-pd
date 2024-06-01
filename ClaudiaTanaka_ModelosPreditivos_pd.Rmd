@@ -189,36 +189,28 @@ O [Capítulo 10. Resampling for Evaluating Performance](https://www.tmwr.org/res
 
 Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
 
-Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treinamento. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treinamento, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treinamento sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
+Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treino. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treino, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treino sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
 
-Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treinamento e subconjunto de teste.
+Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treino e subconjunto de teste.
 
-Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
-
-Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treinamento. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treinamento, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treinamento sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
-
-Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treinamento e subconjunto de teste.
-
-A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treinamento e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treinamento e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
-
-A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treinamento e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treinamento e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
+A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treino e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treino e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
 
 ![Figura 4.1 Esquema de particionamento de dados com reamostragem (Khun e Silge 2023).](.imgs/Resampling.png){#fig4-1 width="500"}
 
 \
-A reamostragem é feita somente no conjunto de treinamento, como se vê na Figura [4.1](#fig4-1). O conjunto de teste não é utilizado. Para cada iteração da reamostragem, os dados são reparticionados em duas sub-amostras:
+A reamostragem é feita somente no conjunto de treino, como se vê na Figura [4.1](#fig4-1). O conjunto de teste não é utilizado. Para cada iteração da reamostragem, os dados são reparticionados em duas sub-amostras:
 
 -   O modelo é treinado com o dataset de [análise]{.underline} (*Analysis*)
 
 -   O modelo é avaliado sobre o dataset de [avaliação]{.underline} (*Assessment*)
 
-Essas duas sub-amostras são análogas aos conjuntos de treinamento e teste. A terminologia de [análise]{.underline} e [avaliação]{.underline} visa evitar confusão com a divisão inicial dos dados em treinamento e teste. Esses conjuntos de reamostragem são mutuamente exclusivos. O esquema de particionamento usado para criar os conjuntos de análise e avaliação é geralmente a característica definidora do método de reamostragem
+Essas duas sub-amostras são análogas aos conjuntos de treino e teste. A terminologia de [análise]{.underline} e [avaliação]{.underline} visa evitar confusão com a divisão inicial dos dados em treino e teste. Esses conjuntos de reamostragem (resample 1, resample 2, ...) são mutuamente exclusivos. O esquema de particionamento usado para criar os conjuntos de análise e avaliação é geralmente a característica definidora do método de reamostragem.
 
 Suponha que sejam feitas 20 iterações de reamostragem. Isso significa que 20 modelos separados são ajustados nos conjuntos de análise e os conjuntos de avaliação correspondentes produzem 20 conjuntos de estatísticas de desempenho. A estimativa final de desempenho para o modelo seria a média das 20 estatísticas de desempenho. Essa média tem potencial de generalização muito alto e é muito superior a estimativas feitas sem particionamento dos dados.
 
 Um método de reamostragem muito utilizado, especialmente com amostras pequenas de dados, é a validação cruzada. Embora haja uma série de variações, o método de validação cruzada mais comum é a validação cruzada [*V-fold*]{.underline}. Os dados são particionados aleatoriamente em $V$ sub-amostras de tamanho aproximadamente igual (as sub-amostras são chamadas de *"folds"*).
 
-A título de ilustração, $V=3$ é mostrado na Figura [4.2](#fig4-2) para um conjunto de dados de treinamento de 30 observações com alocações aleatórias dos folds. O número dentro dos símbolos identifica a observação. A cor e formato dos símbolos representa a sub-amostra ou fold escolhido aleatoriamente.
+A título de ilustração, $V=3$ é mostrado na Figura [4.2](#fig4-2) para um conjunto de dados de treino de 30 observações com alocações aleatórias dos folds. O número dentro dos símbolos identifica a observação. A cor e formato dos símbolos representa a sub-amostra ou fold escolhido aleatoriamente.
 
 ![Figura 4.2 Esquema de validação cruzada 3-fold (Khun e Silge 2023).](.imgs/CrossValidationExample.png){#fig4-2 width="350"}
 
@@ -230,7 +222,7 @@ Para validação cruzada 3-fold, as três iterações de reamostragem são ilust
 
 \
 
-Quando $V = 3$, os conjuntos de análise são 2/3 do conjunto de treinamento e cada conjunto de avaliação é um 1/3. A estimativa final de reamostragem calcula a média das estatísticas de performance de cada uma das sub-amostras. Usar $V = 3$ é bom para ilustrar a mecânica da validação cruzada, mas é ruim na prática porque é muito pequeno para gerar estimativas confiáveis. O Teorema do Limite Central sugere que a média de várias estatísticas de desempenho de modelos ajustados em diferentes sub-amostras de dados tende a ter uma distribuição normal. Isso significa que quanto mais sub-amostras forem usadas, mais confiável será a estimativa da média.
+Quando $V = 3$, os conjuntos de análise são 2/3 do conjunto de treino e cada conjunto de avaliação é um 1/3. A estimativa final de reamostragem calcula a média das estatísticas de performance de cada uma das sub-amostras. Usar $V = 3$ é bom para ilustrar a mecânica da validação cruzada, mas é ruim na prática porque é muito pequeno para gerar estimativas confiáveis. O Teorema do Limite Central sugere que a média de várias estatísticas de desempenho de modelos ajustados em diferentes sub-amostras de dados tende a ter uma distribuição normal. Isso significa que quanto mais sub-amostras forem usadas, mais confiável será a estimativa da média.
 
 Na prática, os valores de V são mais frequentemente $5$ ou $10$; geralmente prefere-se [**validação cruzada 10-fold**]{.underline} como padrão porque a parcela de observações usada na análise ou treino será grande o suficiente para bons resultados na maioria dos casos.
 
@@ -458,7 +450,7 @@ A etapa de análise de dados, deve estabelecer qual técnica ou técnicas de mod
 
 E finalmente, deve-se definir expectativas claras de como o desempenho (e o sucesso) da modelagem serão avaliados. Pelo menos uma métrica de desempenho deve ser identificada com objetivos realistas do que pode ser alcançado. Os benefícios e desvantagens relativos dessas métricas devem ser ponderados. Também é importante que a métrica seja pertinente – seu alinhamento com os objetivos da análise de dados é crítico.
 
-Nessa etapa também deve-se definir a estratégia de particionamento dos dados a ser adotada para a validação do modelo. Os dados serão separados em treinamento e teste? Se sim, é recomendável que as análises exploratórias sejam feitas sobre o conjunto de dados de treinamento, isolando os dados de teste desde o início da modelagem. Será aplicada alguma metodologia de reamostragem? Como mencionado na pergunta [4.1 Validação cruzada](#validacao-cruzada), pode-se escolher algum tipo de validação cruzada, além de outras metodologias desenhadas para mitigar problemas específicos de tamanho ou distribuição dos dados da amostra de treinamento, como *bootstrapping*.
+Nessa etapa também deve-se definir a estratégia de particionamento dos dados a ser adotada para a validação do modelo. Os dados serão separados em treino e teste? Se sim, é recomendável que as análises exploratórias sejam feitas sobre o conjunto de dados de treino, isolando os dados de teste desde o início da modelagem. Será aplicada alguma metodologia de reamostragem? Como mencionado na pergunta [4.1 Validação cruzada](#validacao-cruzada), pode-se escolher algum tipo de validação cruzada, além de outras metodologias desenhadas para mitigar problemas específicos de tamanho ou distribuição dos dados da amostra de treino, como *bootstrapping*.
 
 \
 **(3) Feature Engineering**
@@ -569,7 +561,7 @@ XXXXXXXX
 
 **Descreva em suas palavras o que é Deep Learning.**
 
-Deep Learning é uma categoria de Machine Learning que usa métodos de Redes Neurais para processar dados de treinamento por meio de camadas de funções não lineares ponderadas (neurônios). Um algoritmo de aprendizado atualiza sucessivamente os parâmetros da rede neural para melhorar a qualidade da estimativa.
+Deep Learning é uma categoria de Machine Learning que usa métodos de Redes Neurais para processar dados de treino por meio de camadas de funções não lineares ponderadas (neurônios). Um algoritmo de aprendizado atualiza sucessivamente os parâmetros da rede neural para melhorar a qualidade da estimativa.
 
 Se uma Rede Neural tem muitos neurônios (frequentemente milhões ou mais) e se esses neurônios são organizados em muitas camadas, geralmente com funcionalidades variadas, o algoritmo é chamado de algoritmo de Deep Learning.
 
