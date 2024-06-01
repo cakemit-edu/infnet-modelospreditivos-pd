@@ -69,10 +69,6 @@ df0 <- read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |>
   mutate(across(where(is.character), as.factor)) |> 
   # Ordena para que a classificação de referência seja "Yes"
   mutate(Churn = forcats::fct_rev(Churn))
-<<<<<<< HEAD
-
-dim(df0)
-=======
 
 dim(df0)
 ```
@@ -83,7 +79,6 @@ Só há lacunas nos dados de TotalCharges
 colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> 
   rename(coluna=1,nulos=2) |> 
   filter(nulos>0) |> arrange(desc(nulos))
->>>>>>> 9fc790f41ed2fca580f79a77cce4bb442a1beba7
 ```
 
 Como são apenas 11 observações entre 7.043, optamos por não aplicar uma metodologia de imputação, mas apenas excluir estas observações da base de dados.
@@ -100,9 +95,7 @@ Todos os `customerID` são distintos.
 n_distinct(df0$customerID)
 ```
 
-
 \
-
 
 Só há lacunas nos dados de TotalCharges
 
@@ -180,7 +173,7 @@ df1 |> select(customerID, is.numeric) |>
 
 \
 
-XXXX ===> **Categorização das variáveis numéricas?**
+XXXX ===\> **Categorização das variáveis numéricas?**
 
 \
 
@@ -192,7 +185,6 @@ XXXX ===> **Categorização das variáveis numéricas?**
 
 **(1) Você irá comparar alguns modelos para prever as classes. Descreva como a validação cruzada pode ser usada para comparar modelos de maneira justa. Descreva o procedimento e como uma métrica final é calculada.**
 
-<<<<<<< HEAD
 O [Capítulo 10. Resampling for Evaluating Performance](https://www.tmwr.org/resampling#resampling) do livro Tidy Modeling with R ([Kuhn e Silge 2023]()#references) explica os fundamentos da validação cruzada.
 
 Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
@@ -200,7 +192,7 @@ Algumas técnicas de modelagem (como regressão linear/logística, análise disc
 Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treinamento. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treinamento, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treinamento sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
 
 Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treinamento e subconjunto de teste.
-=======
+
 Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
 
 Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treinamento. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treinamento, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treinamento sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
@@ -208,7 +200,6 @@ Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar
 Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treinamento e subconjunto de teste.
 
 A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treinamento e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treinamento e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
->>>>>>> 9fc790f41ed2fca580f79a77cce4bb442a1beba7
 
 A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treinamento e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treinamento e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
 
@@ -242,15 +233,10 @@ Para validação cruzada 3-fold, as três iterações de reamostragem são ilust
 Quando $V = 3$, os conjuntos de análise são 2/3 do conjunto de treinamento e cada conjunto de avaliação é um 1/3. A estimativa final de reamostragem calcula a média das estatísticas de performance de cada uma das sub-amostras. Usar $V = 3$ é bom para ilustrar a mecânica da validação cruzada, mas é ruim na prática porque é muito pequeno para gerar estimativas confiáveis. O Teorema do Limite Central sugere que a média de várias estatísticas de desempenho de modelos ajustados em diferentes sub-amostras de dados tende a ter uma distribuição normal. Isso significa que quanto mais sub-amostras forem usadas, mais confiável será a estimativa da média.
 
 Na prática, os valores de V são mais frequentemente $5$ ou $10$; geralmente prefere-se [**validação cruzada 10-fold**]{.underline} como padrão porque a parcela de observações usada na análise ou treino será grande o suficiente para bons resultados na maioria dos casos.
-<<<<<<< HEAD
 
 Há variações na aplicação de validações cruzadas, como por exemplo a [validação cruzada com repetição]{.underline}, que cria $R$ repetições de uma validação cruzada V-fold e a [validação cruzada "*leave-one-out"*]{.underline} (LOOCV), que é um caso especial de validação cruzada V-fold com $V = n$, onde $n$ modelos são treinados com $n-1$ observações e cada modelo projeta a observação excluida (técnica utilizada quase exclusivamente quando há amostras muito pequenas de dados). A [validação cruzada de Monte Carlo]{.underline} é uma variação em que a proporção dos dados é determinada aleatoriamente a cada fold. Isso resulta em conjuntos de avaliação que não são mutuamente exclusivos.
 
 \
-=======
->>>>>>> 9fc790f41ed2fca580f79a77cce4bb442a1beba7
-
-## XXX EDA
 
 ## XXX EDA
 
@@ -275,15 +261,18 @@ Assim, apesar de ambos serem modelos lineares, a principal diferença entre os d
 \
 Mais especificamente, com base nos capítulos sobre Regressão Linear simples, Regressão Linear multivariável e Regressão Logística do livro *Practical Statistics for Data Scientists* de [Bruce et al (2020)](#references):
 
-A [**regressão linear simples**]{.underline} fornece um modelo da relação entre a magnitude de uma variável e a de uma segunda – por exemplo, à medida que X aumenta, Y também aumenta. Ou à medida que X aumenta, Y diminui. Coeficiente de correlação é outra forma de medir como duas variáveis estão relacionadas. A diferença é que enquanto a correlação mede a força de uma associação entre duas variáveis, a regressão quantifica a natureza da relação.
+A [**regressão linear simples**]{.underline} @ref(eq:reg-linear) fornece um modelo da relação entre a magnitude de uma variável e a de uma segunda – por exemplo, à medida que X aumenta, Y também aumenta. Ou à medida que X aumenta, Y diminui. Coeficiente de correlação é outra forma de medir como duas variáveis estão relacionadas. A diferença é que enquanto a correlação mede a força de uma associação entre duas variáveis, a regressão quantifica a natureza da relação.
 
-A regressão linear simples estima quanto Y mudará quando Y mudar em um determinado valor. Com o coeficiente de correlação, as variáveis X e Y são intercambiáveis. Com a regressão, tentamos prever a variável Y a partir de X usando uma relação linear (ou seja, uma linha):
+A regressão linear simples @ref(eq:reg-linear) estima quanto Y mudará quando Y mudar em um determinado valor. Com o coeficiente de correlação, as variáveis X e Y são intercambiáveis. Com a regressão, tentamos prever a variável Y a partir de X usando uma relação linear (ou seja, uma linha):
 
 $$
+\begin{equation}
 Y = \beta_0 + \beta_1 X
+(\#eq:reg-linear)
+\end{equation}
 $$
 
-O símbolo $\beta_0$ é a constante que determina a intercecção com o eixo Y se X fosse igual a zero, e o símbolo $\beta_1$ é o coeficiente da inclinação de X. A variável Y é conhecida como [*target*]{.underline} ou variável dependente, pois depende de X. A variável X é conhecida como preditor, [*feature*]{.underline} ou variável independente.
+O símbolo $\beta_0$ é a constante que determina a interseção com o eixo Y se X fosse igual a zero, e o símbolo $\beta_1$ é o coeficiente da inclinação de X. A variável Y é conhecida como variável de saída, variável *target* ou variável dependente, pois depende de X. A variável X é conhecida como variável explicativa, *feature* ou variável independente.
 
 Considerando o gráfico de dispersão na Figura \@ref(fig:5-1) que mostra a largura da pétala de um tipo de flor (`Petal.Width`) versus o comprimento da sua pétala, pode-se visualizar como a largura está relacionada ao comprimento das pétalas. Parece que quanto maior o comprimento, maior a largura.
 
@@ -302,7 +291,7 @@ A regressão linear simples tenta encontrar a “melhor” linha reta ou a linha
 
 $$
 Petal.Width = \beta_0 + \beta_1 Petal.Length
-$$
+$$\
 
 A linha de regressão deste modelo é exibida na Figura \@ref(fig:5-2).
 
@@ -318,7 +307,7 @@ iris |>
 
 \
 
-É importante notar que a regressão apenas estima a variável target em função da feature preditora com base nos dados disponíveis. Não há na regressão inferência sobre relação de causa/efeito entre as variáveis (se uma causa a outra ou vice-versa ou se apenas ocorrem juntas).
+É importante notar que a regressão apenas estima a variável target em função da feature explicativa com base nos dados disponíveis. Não há na regressão inferência sobre relação de causa/efeito entre as variáveis (se uma causa a outra ou vice-versa ou se apenas ocorrem juntas).
 
 Como se vê na figura, em geral os dados não caem exatamente na linha reta que foi estimada pela regressão. Então a equação dessa linha de regressão deve incluir um termo de erro explícito que representa essas diferenças conhecidas como resíduos. Além disso, entre os estatísticos convenciona-se denotar os valores ajustados ou valores estimados por $\hat{Y}$ (Y com um chapéu), assim como nos coeficientes e no resíduo. Isso indica que os coeficientes e o resíduo também são estimados (não conhecidos) e essa estimativa inclui incerteza, enquanto o valor verdadeiro (sem o chapéu) seria exato:
 
@@ -329,34 +318,44 @@ $$
 A linha de regressão é ajustada de modo a minimizar a soma dos quadrados dos resíduos, ou seja, a diferença entre os valores reais e os valores previstos. A linha de regressão é a estimativa que minimiza a soma dos valores residuais quadrados, também chamada de soma residual dos quadrados (residual sum of squares) ou RSS:
 
 $$
+\begin{equation}
 RSS = \sum_{i=1}^{n} (Y_i - \hat{Y_i})^2 = \sum_{i=1}^{n} (Y_i - \hat{\beta_0} - \hat{\beta_1} X_i)^2
+(\#eq:rss)
+\end{equation}
 $$
 
-As estimativas de $\beta_0$ e $\beta_1$ são os valores que minimizam o RSS. O método de minimizar a soma dos resíduos quadrados RSS é denominado regressão de mínimos quadrados ou regressão de mínimos quadrados ordinários (OLS - ordinary least squares). É frequentemente atribuído a Carl Friedrich Gauss, o matemático alemão, mas foi publicado pela primeira vez pelo matemático francês Adrien-Marie Legendre em 1805.
-
-Quando existem vários preditores, a equação é simplesmente estendida para acomodá-los em um regressão linear múltipla:
-
-$$
-\hat{Y} = \hat{\beta_0} + \hat{\beta_1} X_1 + \hat{\beta_2} X_2 + \ldots + \hat{\beta_q} X_q + \epsilon
-$$
-
-Em vez de uma linha, tem-se um modelo linear – a relação entre cada coeficiente e sua variável (feature) é linear.
-
-Todos os outros conceitos da regressão linear simples, como o ajuste por mínimos quadrados e a definição de valores ajustados e resíduos, estendem-se à configuração de regressão linear múltipla.
+As estimativas de $\beta_0$ e $\beta_1$ são os valores que minimizam o RSS \@ref(eq:rss). O método de minimizar a soma dos resíduos quadrados RSS é denominado regressão de mínimos quadrados ou regressão de mínimos quadrados ordinários (OLS - ordinary least squares). É frequentemente atribuído a Carl Friedrich Gauss, o matemático alemão, mas foi publicado pela primeira vez pelo matemático francês Adrien-Marie Legendre em 1805.
 
 \
-A [**regressão logística**]{.underline} é análoga à regressão linear com múltiplas variáveis, exceto que o resultado é [binário]{.underline}. Várias transformações são empregadas para converter o problema em algo no qual um modelo linear possa ser ajustado. A regressão logística é uma abordagem de modelo estruturado, em vez de uma abordagem centrada em dados. Devido à sua velocidade de processamento com menor custo computacional e sua rapidez na classificação de novos dados, é um método bastante adotado.
+Quando existem várias variáveis explicativas, a equação é simplesmente estendida para acomodá-los em um regressão linear múltipla:
 
-Os principais ingredientes para a regressão logística são a função de resposta logística (*logistic response function*) e o logit, no qual mapeia-se uma probabilidade (entre 0 e 1) para uma escala mais ampla, adequada para modelagem linear. O primeiro passo é pensar na variável de resultado não como um rótulo binário, mas como a probabilidade $p$ de que o rótulo seja “1”. Ingenuamente, podemos ficar tentados a modelar $p$ como uma função linear das variáveis preditoras:
+$$
+\begin{equation}
+\hat{Y} = \hat{\beta_0} + \hat{\beta_1} X_1 + \hat{\beta_2} X_2 + \ldots + \hat{\beta_q} X_q + \epsilon
+(\#eq:reg-linear-multiple)
+\end{equation}
+$$
+
+Em vez de uma linha, tem-se um modelo linear – a relação entre cada coeficiente e sua variável (feature) é linear. Essa equação é conhecida como regressão linear múltipla ou [*multiple linear regression*]{.unerline} \@ref(eq:reg-linear-multiple). Todos os outros conceitos da regressão linear simples, como o ajuste por mínimos quadrados e a definição de valores ajustados e resíduos, estendem-se à configuração de regressão linear múltipla.
+
+\
+A [**regressão logística**]{.underline} é análoga à regressão linear múltipla  \@ref(eq:reg-linear-multiple), exceto que o resultado é [binário]{.underline}. Várias transformações são empregadas para converter o problema em algo no qual um modelo linear possa ser ajustado. A regressão logística é uma abordagem de modelo estruturado, em vez de uma abordagem centrada em dados. Devido à sua velocidade de processamento com menor custo computacional e sua rapidez na classificação de novos dados, é um método bastante adotado.
+
+Os principais ingredientes para a regressão logística são a função de resposta logística ou *logistic response function* \@ref(eq:logistic-response) e a função log-odds ou logit \@ref(eq:logit), no qual mapeia-se uma probabilidade (entre 0 e 1) para uma escala mais ampla, adequada para modelagem linear.
+
+O primeiro passo é pensar na variável de resultado não como um rótulo binário, mas como a probabilidade $p$ de que o rótulo seja “1”. Ingenuamente, podemos cair na tentação de modelar $p$ como uma função linear das variáveis explicativas:
 
 $$
 p = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q
 $$
 
-No entanto, ajustar esta função não garante que $p$ resulte em um número entre 0 e 1, como tem que acontecer com uma probabilidade. Então, é necessário modelar $p$ aplicando uma "função de resposta logística" ([*logistic response function*]{.underline}) aos preditores:
+No entanto, ajustar esta função não garante que $p$ resulte em um número entre 0 e 1, como tem que acontecer com uma probabilidade. Então, é necessário modelar $p$ aplicando uma *logistic response function* \@ref(eq:logistic-response) às variáveis explicativas:
 
 $$
+\begin{equation}
 p = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q)}}
+(\#eq:logistic-response)
+\end{equation}
 $$
 
 Essa transformação garante que $p$ permaneça entre 0 e 1.
@@ -375,19 +374,22 @@ $$
 p = \frac{Odds(Y=1)}{1 + Odds(Y=1)}
 $$
 
-Combinando isso com a [*logistic response function*]{.underline} vista anteriormente, tem-se que:
+Combinando isso com a *logistic response function* \@ref(eq:logistic-response) vista anteriormente, tem-se que:
 
 $$
 Odds(Y=1) = e^{\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q}
 $$
 
-Finalmente, tirando o logaritmo natural de ambos os lados, obtém-se uma equação que é uma função linear dos preditores:
+Finalmente, tirando o logaritmo natural de ambos os lados, obtém-se uma equação que é uma função linear das variáveis explicativas:
 
 $$
+\begin{equation}
 log(Odds(Y=1)) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_q x_q
+(\#eq:logit)
+\end{equation}
 $$
 
-A [função log-odds]{.underline}, também conhecida como [função logit]{.underline}, mapeia a probabilidade $p$ de $(0,1)$ para qualquer valor $(-\infty, +\infty)$. Assim o círculo de transformação se fecha, aplicando um modelo linear para prever uma probabilidade, que por sua vez pode ser mapeado para um rótulo de classe aplicando-se uma regra de corte – qualquer observação com uma probabilidade maior que o ponto de corte é classificado como 1.
+A função *log-odds*, também conhecida como função logit \@ref(eq:logit), mapeia a probabilidade $p$ de $(0,1)$ para qualquer valor $(-\infty, +\infty)$. Assim o círculo de transformação se fecha, aplicando um modelo linear para prever uma probabilidade, que por sua vez pode ser mapeado para um rótulo de classe aplicando-se uma regra de corte – qualquer observação com uma probabilidade maior que o ponto de corte é classificado como 1.
 
 ```{r 5-3, echo=FALSE, fig.cap="*Gráfico de função logit que coloca uma probabilidade em uma escala aplicável a um modelo linear.*", fig.width=5, fig.asp=.7}
 # Plot logit(p) x p
@@ -400,18 +402,13 @@ ggplot(data=tibble(x=seq(0.01, 0.99, by=0.01),
 
 \
 
-A resposta na função de regressão logística é o log das probabilidades de um resultado binário de 1. Pretende-se extrair apenas o resultado binário, não o log das probabilidades, portanto, são necessários métodos estatísticos especiais para ajustar a equação.
+A resposta na função de regressão logística é o log das probabilidades de um resultado binário de 1. O resultado desejado, porém, é apenas o resultado binário e não o log das probabilidades, portanto são necessários métodos estatísticos adicionais para ajustar o resultado da equação a um limite de corte.
 
 \
 
 # XXX Modelos de Classificação
 
-<<<<<<< HEAD
 **Com a base escolhida:**
-=======
-**\
-Com a base escolhida:**
->>>>>>> 9fc790f41ed2fca580f79a77cce4bb442a1beba7
 
 ## Etapas de modelagem
 
@@ -453,7 +450,7 @@ Deve-se sempre investigar os dados para garantir que eles sejam precisos, adequa
 
 Uma boa pergunta a ser feita nesta fase é: "Como obtive esses dados?" Esta pergunta pode ajudar a entender como a amostra foi coletada ou filtrada e se isso foi feito de forma adequada. Existem lacunas nos dados? Essas lacunas são significativas? Qual é a maneira adequada de lidar com essas lacunas? Pode-se excluir as observações com lacunas? Deve-se fazer uma imputação dos dados faltantes? Por técnicas simplistas (e.g. imputação da média, mediana) ou utilizando alguma técnica de modelagem exclusivamente para a imputação das lacunas (e.g. interpolação linear).
 
-Outra boa pergunta a ser respondida nessa etapa é se os dados são relevantes para o objetivo proposto. Qual é a variável de saída/*target*? Quais devem ser suas variáveis preditoras ou explicativas? Deve-se manter todas as variáveis ou selecionar apenas as variáveis com maior potencial de influência nas novas projeções de dados? Há correlações entre as variáveis explicativas? Como isso afeta a modelagem? Essas são algumas perguntas exploratórias que podem começar a ser respondidas durante a etapa de EDA.
+Outra boa pergunta a ser respondida nessa etapa é se os dados são relevantes para o objetivo proposto. Qual é a variável de saída/*target*? Quais devem ser suas variáveis explicativas? Deve-se manter todas as variáveis ou selecionar apenas as variáveis com maior potencial de influência nas novas projeções de dados? Há correlações entre as variáveis explicativas? Como isso afeta a modelagem? Essas são algumas perguntas exploratórias que podem começar a ser respondidas durante a etapa de EDA.
 
 Nesta etapa é possível, inclusive, aplicar técnicas de modelagem especificamente para esclarecer a relação entre as variáveis e descobrir a melhor maneira de representar essa relação dentro do modelo preditivo, como por exemplo *Locally Estimated Scatterplot Smoothing* – LOESS.
 
