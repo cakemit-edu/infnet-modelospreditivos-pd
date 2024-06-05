@@ -16,12 +16,13 @@ options(scipen=999) # "Desliga" notação científica.
 
 # PACOTES 
 library(tidymodels)
+library(GGally)
 
 # PRETTY DOC
 library(gt)
 library(patchwork)
 
-theme_set(theme_light())
+theme_set(theme_light(base_size=9))
 theme_update(
   panel.grid.minor = element_blank(),
   plot.title = element_text(size = 12, colour = "gray30", face = "bold"),
@@ -65,51 +66,16 @@ Este projeto é baseado em um [conjunto de dados da IBM no Kaggle](https://www.k
 ```{r}
 df0 <- read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |> 
   as_tibble() |> 
-  mutate(SeniorCitizen = if_else(SeniorCitizen==0, "No", "Yes")) |> 
-  mutate(across(where(is.character), as.factor)) |> 
-  # Ordena para que a classificação de referência seja "Yes"
-  mutate(Churn = forcats::fct_rev(Churn))
+  mutate(SeniorCitizen = if_else(SeniorCitizen==0, "No", "Yes"),
+         # Ordena para que a classificação de referência seja "Churned"= "Yes"
+         Churn = factor(Churn, 
+                        levels=c("Yes", "No"), 
+                        labels=c("Churned", "Renewed"))) |> 
+  mutate(across(where(is.character), as.factor))
 
 dim(df0)
 ```
 
-Só há lacunas nos dados de TotalCharges
-
-```{r}
-colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> 
-  rename(coluna=1,nulos=2) |> 
-  filter(nulos>0) |> arrange(desc(nulos))
-```
-
-Como são apenas 11 observações entre 7.043, optamos por não aplicar uma metodologia de imputação, mas apenas excluir estas observações da base de dados.
-
-```{r}
-df1 <- df0 |> na.omit()
-```
-
-\
-
-Todos os `customerID` são distintos.
-
-```{r}
-n_distinct(df0$customerID)
-```
-
-\
-
-Só há lacunas nos dados de TotalCharges
-
-```{r}
-colSums(is.na(df0)) |> as.data.frame() |> rownames_to_column() |> 
-  rename(coluna=1,nulos=2) |> 
-  filter(nulos>0) |> arrange(desc(nulos))
-```
-
-Como são apenas 11 observações entre 7.043, optamos por não aplicar uma metodologia de imputação, mas apenas excluir estas observações da base de dados.
-
-```{r}
-df1 <- df0 |> na.omit()
-```
 
 \
 
@@ -117,38 +83,165 @@ df1 <- df0 |> na.omit()
 
 **Descreva as variáveis presentes na base. Quais são as variáveis? Quais são os tipos de variáveis (discreta, categórica, contínua)? Quais são as médias e desvios padrões?**
 
-Cada linha representa um cliente, cada coluna contém os seguintes atributos do cliente.
+Cada linha representa um cliente e cada coluna contém os seguintes atributos do cliente:
 
 Este conjunto de dados inclui as seguintes 20 variáveis explicativas (features):
 
--   [dados demográficos]{.underline}: Gender (gênero), SeniorCitizen (flag de idoso), Partner (se tem parceiro), Dependents (se tem dependentes)
+-   Quatro variáveis de [dados demográficos]{.underline}: `Gender` (gênero masculino ou feminino), `SeniorCitizen` (se é ou não idoso), `Partner` (se tem ou não parceiro), `Dependents` (se tem ou não dependentes)
 
--   [serviços assinados]{.underline}: PhoneService, MultipleLine, InternetService, OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies
+-   Nove variáveis de [serviços assinados]{.underline}: `PhoneService`, `MultipleLine`, `InternetService`, `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV` e `StreamingMovies`
 
--   [informações da conta do cliente]{.underline}: CustomerID, Contract, PaperlessBilling (recebe a fatura online), PaymentMethod (método de pagamento), MonthlyCharges (mensalidade), TotalCharges (total incluindo mensalidade), Tenure (há quantos meses é cliente)
+-   Sete variáveis de [informações da conta do cliente]{.underline}: `CustomerID`, `Contract` (tipo de contrato - mensal, anual ou bianual), `PaperlessBilling` (se recebe ou não a fatura online), `PaymentMethod` (método de pagamento - Débito automático, Cartão de crédito, cheque eletrônico ou de papel), `MonthlyCharges` (valor da mensalidade), `TotalCharges` (cobrança total incluindo mensalidade) e `Tenure` (há quantos meses é cliente)
 
-O alvo é `Churn`, que é um flag binário sim ou não.
+A variável dependente de interesse (target) é o `Churn`, que é uma variável binária. Os clientes são classificados como "Yes" (Churned) ou "No" (Renewed).
 
 ```{r}
-glimpse(df1)
+str(df0)
 ```
 
 Todas as variáveis são categóricas, exceto a variável numérica discreta `Tenure` (há quantos meses é cliente) e as duas variáveis numéricas contínuas: (1) mensalidade (`MonthlyCharges`); e (2) valor total incluindo mensalidade (`TotalCharges`).
 
 \
 
-Estatísticas descritivas das variáveis numéricas:
+## Variáveis categóricas
+
+Olhando as variáveis categóricas e suas frequências:
+
+```{r echo=FALSE}
+summarytools::dfSummary(df0 |> select(is.factor), 
+                        style="multiline", plain.ascii=F, graph.col=F, valid.col=F) |> 
+  knitr::kable()
+```
+
+
+Não há lacunas nas variáveis categóricas.
+
+Todos os `customerID` são distintos e, portanto, tem baixo valor explicativo e não ajudará a informar a distinção entre clientes Churned (cancelados) vs Renewed (mantidos).  Optamos por descartar essa variável pois ela não é relevante para a modelagem preditiva.
+
+As variáveis de serviços assinados deveriam ser biárias (sim/não) pois a informação adicional sobre se tem ou não serviço de internet ou de telefone já está contida nas variáveis `PhoneService` e `InternetService`. Torná-las binárias evitará a redundância.
+
+Seria interessante incluir uma variável que conta quantos serviços o cliente assina, além de ter todos os serviços assinados como variáveis binárias.
+
+
+\
+
+## Variáveis numéricas
+
+Olhando as variáveis numéricas e suas distribuições: 
+
+```{r echo=FALSE}
+summarytools::dfSummary(df0 |> select(is.numeric), 
+                        style="multiline", plain.ascii=F, graph.col=F, valid.col=F) |> 
+  knitr::kable()
+```
+
+
+Só há 11 observações com lacunas na variável `TotalCharges`. 
+
+\
+
+## Preprocessamento
+
+Como são apenas 11 observações entre 7.043, optamos por não aplicar uma metodologia de imputação, mas apenas excluir estas observações da base de dados.
 
 ```{r}
-summary(df1 |> select(is.numeric))
+x <- filter(df0, is.na(TotalCharges)) |>
+  select(-customerID) |>
+  mutate(
+    across(c(MultipleLines, OnlineSecurity:StreamingMovies), ~if_else(.x=="Yes", .x, "No")),
+    across(is.character, as.factor)
+  )
+
+df1 <- df0 |>
+  select(-customerID) |>
+  na.omit() |>
+  mutate(
+    across(c(MultipleLines, OnlineSecurity:StreamingMovies), ~if_else(.x=="Yes", .x, "No")),
+    across(is.character, as.factor)
+  )
 ```
+
+
+\
+
+## Outras análises
+
+::: {.alert .alert-danger}
+NOTA: INCLUIR VARIÁVEL DE CONTAGEM DE SERVIÇOS ASSINADOS
+CHECAR SE EXCLUSÃO DE MISSINGS VAI ALTERAR ANÁLISES DE EDA
+
+* Outliers?\
+* Categorização das variáveis numéricas?\
+* Correlações entre as variáveis?\
+* Hipóteses sobre as variáveis mais explicativas?\
+:::
+
+\
+
+```{r echo=FALSE, fig.asp=.8, fig.width=5}
+ggbivariate(df1 |> select(gender:Dependents, Churn), 
+            outcome="Churn", 
+            rowbar_args = list(colour = "white",
+                               size = 4,
+                               label_format = scales::label_percent(accurary = 1)),
+            # types = list(comboVertical="autopoint"),
+            title = "Churn x Variáveis demográficas") +
+  theme(panel.spacing=unit(.8, "lines")) +
+  scale_fill_brewer(palette="Set1") +
+  scale_color_brewer(palette="Set1")
+```
+\
+
+```{r echo=FALSE, fig.asp=1.7, fig.width=5}
+ggbivariate(df1 |> select(PhoneService:StreamingMovies, Churn), 
+            outcome="Churn", 
+            rowbar_args = list(colour = "white",
+                               size = 4,
+                               label_format = scales::label_percent(accurary = 1)),
+            # types = list(comboVertical="autopoint"),
+            title = "Churn x Serviços assinados") +
+  theme(panel.spacing=unit(.6, "lines")) +
+  scale_fill_brewer(palette="Set1") +
+  scale_color_brewer(palette="Set1")
+```
+
+\
+
+```{r echo=FALSE, fig.asp=1.2, fig.width=5}
+ggbivariate(df1 |> select(c(Contract:TotalCharges, tenure), Churn), 
+            outcome="Churn", 
+            rowbar_args = list(colour = "white",
+                               size = 4,
+                               label_format = scales::label_percent(accurary = 1)),
+            # types = list(comboVertical="autopoint"),
+            title = "Churn x Serviços assinados") +
+  theme(panel.spacing=unit(.6, "lines")) +
+  scale_fill_brewer(palette="Set1") +
+  scale_color_brewer(palette="Set1")
+```
+
 
 \
 
 Nenhuma das variáveis numéricas parece ter distribuição normal e nem valores extremos.
 
+
+```{r echo=FALSE, fig.asp=1, fig.width=6}
+ggpairs(df1 |> select(is.numeric, Churn), aes(color=Churn, fill=Churn),
+        # columnLabels=c("Tenure (months)", "Monthly charges", "OUTCOME: Churn"),
+        diag="blank", axisLabels="internal", 
+        lower=list(continuous=wrap("density", alpha=.5), 
+                   combo=wrap("facethist", alpha=.5, bins=30)),
+        # upper=list(combo=wrap("autopoint")),
+        title="Correlações entre as variáveis numéricas considerando Churn") +
+  scale_fill_brewer(palette="Set1") +
+  scale_color_brewer(palette="Set1")
+```
+
+\
+
 ```{r 3-1, echo=FALSE, fig.cap="*Histograma das variáveis numéricas*", fig.asp=1}
-df1 |> select(customerID, is.numeric) |> 
+df1 |> select(is.numeric) |> 
   pivot_longer(is.numeric) |> 
   mutate(name = factor(name, levels=c("tenure", "MonthlyCharges", "TotalCharges"),
                        labels=c("Tenure (months)", "Monthly charges", "Total charges"))) |>
@@ -171,13 +264,11 @@ df1 |> select(customerID, is.numeric) |>
        x = NULL, y = "Frequência")
 ```
 
-\
 
-XXXX ===\> **Categorização das variáveis numéricas?**
 
 \
 
-# X Validação cruzada e EDA
+# Overfitting
 
 **Em relação à base escolhida:**
 
@@ -230,15 +321,16 @@ Há variações na aplicação de validações cruzadas, como por exemplo a [val
 
 \
 
-## XXX EDA
+## Balanceamento de classes
 
 **(2) A base se encontra com as classes balanceadas? Cite uma maneira resolver no caso das classes estarem desbalanceadas.**
 
-Neste conjunto de dados de mais de 7.000 clientes, 26% deles saíram no último mês.
+Neste conjunto de dados de mais de 7.000 clientes, `r scales::percent(nrow(filter(df1, Churn=="Churned"))/nrow(df1), accuracy=.1)` deles cancelaram os serviços no último mês. A variável de interesse `Churn` está desbalanceada, portanto será necessário:
 
-```{r}
+*  Estratificar o split dos datasets de treino/teste para assegurar que preservem a proporção de classes do `Churn`
 
-```
+*  Utilizar técnicas de balanceamento de classes, como a [subamostragem aleatória]{.underline} (*undersampling*) ou [sobreamostragem aleatória]{.underline} (*oversampling*), ou ainda técnicas de [geração sintética de dados]{.underline} como o [SMOTE]{.underline} (Synthetic Minority Over-sampling Technique) para balancear as classes do conjunto de dados de treino antes de fazer o ajuste do modelo.
+
 
 \
 
@@ -285,23 +377,34 @@ $$
 Petal.Width = \beta_0 + \beta_1 Petal.Length
 $$\
 
-A linha de regressão deste modelo é exibida na Figura \@ref(fig:5-2).
+
+A linha de regressão deste modelo é a linha azul exibida na Figura \@ref(fig:5-2).
+
 
 ```{r 5-2, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width com regressão linear simples*", fig.width=5, fig.asp=.7}
-iris |> 
-  filter(Species == "versicolor") |>
-  ggplot(aes(x=Petal.Length, y=Petal.Width)) +
-  geom_smooth(method="lm", se=FALSE, formula="y~x") +
-  geom_point() +
+#ggplot needs a dataframe
+dat <- iris |> filter(Species == "versicolor")
+fit <- lm(Petal.Width~Petal.Length,data=dat)
+
+#add predicted y for each x, to enable segment drawing
+dat$pred <- predict(fit, dat)
+
+ggplot(dat, aes(x=Petal.Length,y=Petal.Width))+
+  geom_abline(intercept=coefficients(fit)[1],slope=coefficients(fit)[2], 
+              color="blue", linewidth=1, linetype="twodash") +
+  geom_segment(aes(x=Petal.Length,xend=Petal.Length,y=Petal.Width,yend=pred),
+               color="red", size=.7) +
+  geom_point(size=2) + 
   labs(title = "Gráfico de dispersão Sepal.Length x Sepal.Width",
        subtitle = "Iris dataset")
 ```
+
 
 \
 
 É importante notar que a regressão apenas estima a variável target em função da feature explicativa com base nos dados disponíveis. Não há na regressão inferência sobre relação de causa/efeito entre as variáveis (se uma causa a outra ou vice-versa ou se apenas ocorrem juntas).
 
-Como se vê na figura, em geral os dados não caem exatamente na linha reta que foi estimada pela regressão. Então a equação dessa linha de regressão deve incluir um termo de erro explícito que representa essas diferenças conhecidas como resíduos. Além disso, entre os estatísticos convenciona-se denotar os valores ajustados ou valores estimados por $\hat{Y}$ (Y com um chapéu), assim como nos coeficientes e no resíduo. Isso indica que os coeficientes e o resíduo também são estimados (não conhecidos) e essa estimativa inclui incerteza, enquanto o valor verdadeiro (sem o chapéu) seria exato:
+Como se vê na figura, em geral os dados não caem exatamente na linha reta que foi estimada pela regressão. Então a equação dessa linha de regressão deve incluir um termo de erro explícito que representa essas diferenças conhecidas como resíduos, representadas na Figura \@ref(fig:5-2) como distâncias em vermelho entre os pontos observados e a linha azul estimada. Além disso, entre os estatísticos convenciona-se denotar os valores ajustados ou valores estimados por $\hat{Y}$ (Y com um chapéu), assim como nos coeficientes e no resíduo. Isso indica que os coeficientes e o resíduo também são estimados (não conhecidos) e essa estimativa inclui incerteza, enquanto o valor verdadeiro (sem o chapéu) seria exato:
 
 $$
 \hat{Y_i} = \hat{\beta_0} + \hat{\beta_1} X_i + \hat{\epsilon}_i
