@@ -3,11 +3,10 @@ title:  Projeto da Disciplina de Modelos Preditivos
 author: Claudia Tanaka (claudia.tanaka@al.infnet.edu.br)
 date:   "Atualizado em `r format(Sys.time(), '%d/%m/%Y')`"
 
-output:
-  bookdown::html_document2:
-    toc: yes
-    toc_float: yes
-    fig_caption: yes
+bookdown::html_document2:
+  toc: yes
+  toc_float: yes
+  fig_caption: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -290,7 +289,7 @@ df1 |> select(Gender:Dependents) |>
             position = position_fill(.5), check_overlap=T, size=3) +
   scale_x_continuous(expand=expansion(mult=c(0,.0)), breaks=NULL) +
   theme(panel.grid.major.x=element_blank(), legend.position="none") +
-  labs(title="Variáveis demográficas", 
+  labs(title="Variaveis demograficas", 
        subtitle=glue::glue("n = {nrow(df1)}"), x=NULL, y=NULL)
 ```
 
@@ -306,29 +305,37 @@ ggbivariate(df1 |> select(Gender:Dependents, Churn),
             rowbar_args = list(colour = "white",
                                size = 3,
                                label_format = scales::label_percent(accurary=1)),
-            title = "Churn x Variáveis demográficas") +
+            title = "Churn x Variaveis demograficas") +
   theme(panel.spacing=unit(.5, "lines"), legend.position="bottom") +
   scale_fill_brewer(palette="Set1") +
   scale_color_brewer(palette="Set1") +
   labs(subtitle=glue::glue("n = {nrow(df1)}"))
 ```
 
-
 \
 
 ### Serviços contratados
 
+```{r include=FALSE}
+comInternetTelefone <- round(nrow(filter(df1,PhoneService=="Yes",InternetService!="No"))/nrow(df1)*100)
+telefonia <- round(nrow(filter(df1,PhoneService=="Yes"))/nrow(df1)*100)
+multiplelines <- round(nrow(filter(df1,MultipleLines=="Yes"))/nrow(df1)*100)
+internetService <- round(nrow(filter(df1,InternetService=="Fiber optic"))/nrow(df1)*100)
+dsl <- round(nrow(filter(df1,InternetService=="DSL"))/nrow(df1)*100)
+n.internet <- round(nrow(filter(df1,InternetService!="No" & n.internet > 0)) / nrow(filter(df1,InternetService!="No"))*100)
+n.streaming <- round(df1 |> filter(StreamingTV=="Yes"|StreamingMovies=="Yes") |> nrow() / nrow(df1)*100)
+```
 
 
-Sendo uma empresa de telecomunicações, todos os clientes têm `PhoneService` e/ou `InternetService` contratado. Especificamente verifica-se que a maioria (`r round(nrow(filter(df1,PhoneService=="Yes" & InternetService != "No"))/nrow(df1)*100)`%) dos clientes têm tanto internet quanto telefonia.
+Sendo uma empresa de telecomunicações, todos os clientes têm `PhoneService` e/ou `InternetService` contratado. Especificamente verifica-se que a maioria (`r comInternetTelefone`%) dos clientes têm tanto internet quanto telefonia.
 
-Em relação ao padrão de serviços de telefonia contratados, como `r round(nrow(filter(df1,PhoneService=="Yes"))/nrow(df1)*100)`% dos clientes têm telefonia e `r round(nrow(filter(df1,MultipleLines=="Yes"))/nrow(df1)*100)`% dos clientes têm múltiplas linhas, quase a metade dos clientes de telefonia tem mais de uma linha.
+Em relação ao padrão de serviços de telefonia contratados, como `r telefonia`% dos clientes têm telefonia e `r multiplelines`% dos clientes têm múltiplas linhas, quase a metade dos clientes de telefonia tem mais de uma linha.
 
-Clientes em fibra ótica são um pouco mais frequentes que clientes com DSL. Dos clientes que assinam internet com a empresa, `r round(nrow(filter(df1,InternetService=="Fiber optic"))/nrow(df1)*100)`% contrataram fibra ótica e `r round(nrow(filter(df1,InternetService=="DSL"))/nrow(df1)*100)`% contrataram DSL.
+Clientes em fibra ótica são um pouco mais frequentes que clientes com DSL. Dos clientes que assinam internet com a empresa, `r internetService`% contrataram fibra ótica e `r dsl`% contrataram DSL.
 
-Verifica-se no dataset também que `r round(nrow(filter(df1,InternetService!="No" & n.internet>0))/nrow(filter(df1,InternetService!="No"))*100)`% dos clientes com internet têm algum tipo de serviço adicional contratado. Como se vê na Figura abaixo, a maioria dos serviços adicionais não chega a ser contratado por metade dos clientes com internet, exceto os serviços de *streaming*.
+Verifica-se no dataset também que `r n.internet`% dos clientes com internet têm algum tipo de serviço adicional contratado. Como se vê na Figura abaixo, a maioria dos serviços adicionais não chega a ser contratado por metade dos clientes com internet, exceto os serviços de *streaming*.
 
-Os serviços adicionais mais frequentes são `StreamingTV` e `StreamingMovies`. De fato, dos clientes com serviços de internet, verifica-se que `r round(nrow(filter(df1,InternetService!="No" & n.streaming>0))/nrow(filter(df1,InternetService!="No"))*100)`% contratam TV ou Movies ou ambos. Seria interessante conversar com a equipe de negócios para checar a diferença entre esses dois serviços e verificar se faria sentido juntar os clientes destes serviços em uma única variável, caso isso melhorasse a performance do modelo em produção.
+Os serviços adicionais mais frequentes são `StreamingTV` e `StreamingMovies`. De fato, dos clientes com serviços de internet, verifica-se que `r n.streaming`% contratam TV ou Movies ou ambos. Seria interessante conversar com a equipe de negócios para checar a diferença entre esses dois serviços e verificar se faria sentido juntar os clientes destes serviços em uma única variável, caso isso melhorasse a performance do modelo em produção.
 
 ```{r echo=FALSE, fig.width=5, fig.asp=.7}
 df1 |> select(PhoneService:StreamingMovies) |> 
@@ -348,11 +355,17 @@ df1 |> select(PhoneService:StreamingMovies) |>
             position = position_fill(.5), check_overlap=T, size=3) +
   scale_x_continuous(expand=expansion(mult=c(0,.0)), breaks=NULL) +
   theme(panel.grid.major.x=element_blank(), legend.position="none") +
-  labs(title="Serviços contratados", 
+  labs(title="Servicos contratados", 
        subtitle=glue::glue("n = {nrow(df1)}"), x=NULL, y=NULL)
 ```
 
 \
+
+```{r include=FALSE}
+# rm(comInternetTelefone, telefonia, multiplelines, internetService, dsl, n.internet, n.streaming)
+# gc()
+```
+
 
 A contratação de serviços de `PhoneService` e talvez `MultipleLines` parece ter pouca diferença em termos de proporção de `Churn`, levantando a hipótese de baixa relevância explicativa dessas variáveis para nossa variável target.
 
