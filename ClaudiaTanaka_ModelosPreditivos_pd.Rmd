@@ -15,7 +15,10 @@ knitr::opts_chunk$set( message=FALSE, warning=FALSE )
 options(scipen=999) # "Desliga" notação científica. 
 
 # PACOTES 
+library(tidyverse)
 library(tidymodels)
+tidymodels_prefer()
+library(corrr)
 library(GGally)
 
 # PRETTY DOC
@@ -25,12 +28,51 @@ library(patchwork)
 theme_set(theme_light(base_size=9))
 theme_update(
   panel.grid.minor = element_blank(),
-  panel.grid.major = element_line(colour = "gray95"),
-  plot.title = element_text(size = 12, colour = "gray30", face = "bold"),
-  plot.subtitle = element_text(face = 'italic', colour = "gray50", size = 10),
-  plot.caption = element_text(colour = "gray50", hjust=0, size = 8),
+  panel.grid.major = element_line(colour="gray95"),
+  plot.title = element_text(size=10, colour="gray30", face="bold"),
+  plot.subtitle = element_text(face='italic', colour="gray50", size=9),
+  plot.caption = element_text(colour="gray50", hjust=0, size=8),
   legend.title = element_blank(),
 )
+
+# FUNCTIONS
+tidyConfMat <- function(df) {
+  df |> 
+    mutate(
+      y = case_when(name=="cell_1_1" ~ 1,
+                    name=="cell_2_2" ~ 0,
+                    name=="cell_1_2" ~ 1,
+                    name=="cell_2_1" ~ 0),
+      x = case_when(name=="cell_1_1" ~ 0,
+                    name=="cell_2_2" ~ 1,
+                    name=="cell_1_2" ~ 1,
+                    name=="cell_2_1" ~ 0),
+      category = case_when(y==1 & x==0 ~ "TP",
+                           y==0 & x==1 ~ "TN",
+                           y==0 & x==0 ~ "FN",
+                           y==1 & x==1 ~ "FP",
+                           .default=NA),
+      gg.lbl = paste0(value," (", category, ")" ),
+      gg.col = case_when(y==1 & x==0 ~ "darkgreen",
+                         y==0 & x==1 ~ "darkgreen",
+                         y==0 & x==0 ~ "red",
+                         y==1 & x==1 ~ "red",
+                         .default=NA)
+    )
+}
+
+plotConfMat <- function(df) {
+  df |> 
+    ggplot(aes(x, y)) +
+    geom_tile(aes(fill=gg.col), colour="white", alpha=.7) +
+    geom_text(aes(label=gg.lbl), size=3) +
+    facet_wrap(~model, nrow=1) +
+    scale_x_continuous(expand=expansion(mult=c(0,0)), breaks=NULL, position="top") +
+    scale_y_continuous(expand=expansion(mult=c(0,0)), breaks=NULL) +
+    theme(legend.position = "none") +
+    scale_fill_identity() +
+    labs(title = "Confusion matrix", x="TRUTH", y="PREDICTION")
+}
 ```
 
 \
@@ -43,11 +85,15 @@ Escolha uma base de dados para realizar esse projeto, onde você utilizará algo
 
 \
 
-# Knime
+# Ambiente
 
 **No relatório final, anexe um printscreen evidenciando que o Knime está funcionando com os componentes**
 
-![Printscreen do Knime instalado na minha máquina](.imgs/knime1.png)
+![Printscreen do Knime instalado na minha máquina](.imgs/Rstudio.png)
+
+```{r}
+print(sessionInfo(), locale=FALSE)
+```
 
 \
 
@@ -57,15 +103,16 @@ Escolha uma base de dados para realizar esse projeto, onde você utilizará algo
 
 O objetivo deste projeto é avaliar a propensão ou risco de rotatividade dos clientes de uma empresa de telecomunicações. Isto é fundamental para o negócio de telecomunicações porque muitas vezes é mais caro adquirir novos clientes do que manter os existentes.
 
-Especificamente, nosso projeto fará uma modelagem para a classificação dos clientes entre contratos cancelados ou não cancelados, gerando um modelo final que ajudará a empresa a identificar clientes altamente propensos ao cancelamento de forma que sua área comercial possa atuar especificamente sobre estes clientes.
+Especificamente, nosso projeto fará uma modelagem para a classificação dos clientes entre contratos cancelados (`Churned`) ou não cancelados (\`Renewed\`\`), gerando um modelo final que ajudará a empresa a identificar clientes altamente propensos ao cancelamento de forma que sua área comercial possa atuar especificamente sobre estes clientes.
 
-Adicionalmente, gostaríamos de poder reportar a importância relativa das variáveis explicativas do modelo final para identificar os fatores mais influenciadores do risco de cancelamento do cliente.
+Adicionalmente, gostaríamos de poder avaliar a importância relativa das variáveis explicativas do modelo final para identificar os fatores mais influenciadores do risco de cancelamento do cliente.
 
 \
 Este projeto é baseado em um [conjunto de dados da IBM no Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn).
 
 ```{r}
-df0 <- read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |> 
+df0 <- 
+  read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |> 
   as_tibble() |> 
   rename(Gender=gender, Tenure=tenure) |> 
   mutate(SeniorCitizen = if_else(SeniorCitizen==0, "No", "Yes"),
@@ -73,11 +120,11 @@ df0 <- read.csv("_datasets/WA_Fn-UseC_-Telco-Customer-Churn.csv") |>
          Churn = factor(Churn, 
                         levels=c("Yes", "No"), 
                         labels=c("Churned", "Renewed"))) |> 
-  mutate(across(where(is.character), as.factor))
+  mutate(across(where(is.character), ~if_else(.x=="", NA, .x)),
+         across(where(is.character), as.factor))
 
 dim(df0)
 ```
-
 
 \
 
@@ -89,11 +136,51 @@ Cada linha representa um cliente e cada coluna contém os seguintes atributos do
 
 Este conjunto de dados inclui as seguintes 20 variáveis explicativas (features):
 
--   Quatro variáveis de [dados demográficos]{.underline}: `Gender` (gênero masculino ou feminino), `SeniorCitizen` (se é ou não idoso), `Partner` (se tem ou não parceiro), `Dependents` (se tem ou não dependentes)
+-   Quatro variáveis de [dados demográficos]{.underline}:
 
--   Nove variáveis de [serviços assinados]{.underline}: `PhoneService`, `MultipleLine`, `InternetService`, `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV` e `StreamingMovies`
+    -   `Gender` (gênero masculino ou feminino),
 
--   Sete variáveis de [informações da conta do cliente]{.underline}: `CustomerID`, `Contract` (tipo de contrato - mensal, anual ou bianual), `PaperlessBilling` (se recebe ou não a fatura online), `PaymentMethod` (método de pagamento - Débito automático, Cartão de crédito, cheque eletrônico ou de papel), `MonthlyCharges` (valor da mensalidade), `TotalCharges` (cobrança total incluindo mensalidade) e `Tenure` (há quantos meses é cliente)
+    -   `SeniorCitizen` (se é ou não idoso),
+
+    -   `Partner` (se tem ou não parceiro),
+
+    -   `Dependents` (se tem ou não dependentes)
+
+-   Nove variáveis de [serviços assinados]{.underline}:
+
+    -   `PhoneService`,
+
+    -   `MultipleLine`,
+
+    -   `InternetService`,
+
+    -   `OnlineSecurity`,
+
+    -   `OnlineBackup`,
+
+    -   `DeviceProtection`,
+
+    -   `TechSupport`,
+
+    -   `StreamingTV` e
+
+    -   `StreamingMovies`
+
+-   Sete variáveis de [informações da conta do cliente]{.underline}:
+
+    -   `CustomerID`, que é uma chave de identificação do cliente,
+
+    -   `Contract` tipo de contrato - mensal, anual ou bianual,
+
+    -   `PaperlessBilling` se recebe ou não a fatura online,
+
+    -   `PaymentMethod` método de pagamento - Débito automático, Cartão de crédito, cheque eletrônico ou de papel,
+
+    -   `MonthlyCharges` valor da mensalidade,
+
+    -   `TotalCharges` cobrança total incluindo mensalidade e
+
+    -   `Tenure` há quantos meses é cliente
 
 A variável dependente de interesse (target) é o `Churn`, que é uma variável binária. Os clientes são classificados como "Yes" (Churned) ou "No" (Renewed).
 
@@ -115,21 +202,19 @@ summarytools::dfSummary(df0 |> select(is.factor),
   knitr::kable()
 ```
 
-
 Não há lacunas nas variáveis categóricas.
 
-Todos os `customerID` são distintos e, portanto, tem baixo valor explicativo e não ajudará a informar a distinção entre clientes Churned (cancelados) vs Renewed (mantidos).  Optamos por descartar essa variável pois ela não é relevante para a modelagem preditiva.
+Todos os `customerID` são distintos e, portanto, essa variável tem baixo valor explicativo e não ajudará a informar a distinção entre clientes Churned (cancelados) vs Renewed (mantidos). Manteremos a variável na base para que a empresa possa analisar clientes específicos a partir das análises do modelo, mas ela não será utilizada como variável explicativa na modelagem.
 
-As variáveis de serviços assinados deveriam ser biárias (sim/não) pois a informação adicional sobre se tem ou não serviço de internet ou de telefone já está contida nas variáveis `PhoneService` e `InternetService`. Torná-las binárias evitará a redundância.
+As variáveis dos serviços assinados deveriam ser biárias (sim/não) pois a informação adicional sobre se tem ou não serviço de internet ou de telefone já está contida nas variáveis `PhoneService` e `InternetService`. Torná-las binárias evitará a redundância.
 
 Seria interessante incluir uma variável que conta quantos serviços o cliente assina, além de ter todos os serviços assinados como variáveis binárias.
-
 
 \
 
 ## Variáveis numéricas
 
-Olhando as variáveis numéricas e suas distribuições: 
+Olhando as variáveis numéricas e suas distribuições:
 
 ```{r echo=FALSE}
 summarytools::dfSummary(df0 |> select(is.numeric), 
@@ -137,71 +222,74 @@ summarytools::dfSummary(df0 |> select(is.numeric),
   knitr::kable()
 ```
 
-
-Só há 11 observações com lacunas na variável `TotalCharges`. 
+Há 11 observações com lacunas na variável `TotalCharges`.
 
 \
 
 ## Preprocessamento
 
-Apenas 11 observações entre as 7.043 têm dados faltantes e todas com `Churn` negativo (clientes retidos), que é a classe majoritária (73% das observações). Portanto, o impacto nos padrões do segmento de clientes retidos é muito limitado e optamos por não aplicar uma metodologia de imputação no preprocessamento, mas apenas excluir estas observações da base. 
+Apenas 11 observações entre as 7.043 têm dados faltantes (lacunas) e todas com clientes que mantiveram suas assinaturas `Churn = Renewed`, que é a classe majoritária (73% das observações). Portanto, o impacto nos padrões do segmento de clientes retidos é muito pequeno e optamos por não aplicar uma metodologia de imputação no preprocessamento, mas apenas excluir estas observações da base.
 
-Na implementação do modelo para fazer predições, observações com dados faltantes não terão previsões. O volume de dados faltantes nas novas observações a serem alimentadas no modelo em produção sempre tem que ser monitorado (independente de como dados faltantes foram tratados na base usada para treinar o modelo). Se houver um aumento dos dados faltantes a ponto de impactar o volume de previsões, será necessário aplicar uma metodologia de imputação dos dados faltantes antes de alimentar os dados no modelo para fazer novas previsões.
+Nota-se que em uma eventual implementação do modelo para fazer predições, observações com lacunas não terão previsões se o modelo precisar da variável explicativa que estiver faltando. O volume de observações com lacunas a serem alimentadas no modelo em produção sempre tem que ser monitorado (independente de como dados faltantes foram tratados na base usada para treinar o modelo). Se houver um aumento das observações com lacunas a ponto de impactar as previsões, será necessário decidir como ajustar o modelo para lidar com isso.
 
-No nosso projeto, como o objetivo principal é identificar clientes altamente propensos ao cancelamento para que a área comercial possa atuar especificamente sobre estes clientes, julgo que a exclusão desse pequeno volume de dados faltantes não terá grande impacto nessa ação da empresa - haverá volume suficiente de clientes de alto risco para a área comercial atuar se a proporção de dados faltantes permanecer baixa nas novas observações. Além disso, esse volume reduzido de dados faltantes especificamente sobre clientes retidos não comprometerá a extração de insights sobre o perfil de clientes cancelados (`Churn` positivo).
+No nosso projeto, como o objetivo principal é identificar clientes altamente propensos ao cancelamento para que a área comercial possa atuar especificamente sobre estes clientes, julgo que a exclusão desse pequeno volume de observações com lacunas não terá grande impacto na ação da empresa - haverá volume suficiente de clientes de alto risco para a área comercial atuar se a proporção de dados faltantes permanecer baixa nas novas observações. Além disso, esse volume reduzido de dados faltantes especificamente sobre clientes retidos não comprometerá a análise sobre os fatores que levam ao cancelamento pois não provocam alteração significativa no balanceamento das classes da variável target.
+
+A seguir as transformações aplicadas sobre toda a base, antes de preparar para a modelagem:
 
 ```{r}
 df1 <- df0 |>
-  select(-customerID) |>
+  # Omite obs com lacunas
   na.omit() |>
+  
   mutate(
+    # Torna as variáveis Yes/No/etc binárias - apenas Yes/No
     across(c(MultipleLines, OnlineSecurity:StreamingMovies), ~if_else(.x=="Yes", .x, "No")),
+    # Fatoriza todas as variáveis categóricas
     across(is.character, as.factor)
   ) |> 
+  # Cria coluna que conta quantos serviços de internet foram assinados 
+  # por cada cliente
   rowwise() |> 
-  mutate(
-    n.internet = sum(c_across(OnlineSecurity:StreamingMovies)=="Yes"),
-    n.streaming = sum(c_across(StreamingTV:StreamingMovies)=="Yes")
-  ) |>
+  mutate(n.internet = sum(c_across(OnlineSecurity:StreamingMovies)=="Yes")) |>
   ungroup()
 
-glimpse(df1)
+str(df1)
 ```
-
 
 \
 
-## Outras análises (EDA)
+## EDA
 
 ::: {.alert .alert-danger}
-* Outliers?\
-* Categorização das variáveis numéricas?\
-* Correlações entre as variáveis?\
-* Hipóteses sobre as variáveis mais explicativas?\
+-   Outliers?\
+-   Categorização das variáveis numéricas?\
+-   Correlações entre as variáveis?\
+-   Hipóteses sobre as variáveis mais explicativas?\
 :::
 
 \
 
-**Variáveis demográficas**
+### Variáveis demográficas
 
 A proporção de clientes por gênero e se têm ou não parceiros é bem balanceada. A maioria dos clientes não são idosos e não têm dependentes.
 
 ```{r echo=FALSE, fig.width=4, fig.asp=.7}
 df1 |> select(Gender:Dependents) |> 
-  pivot_longer(cols=Gender:Dependents, values_to="class") |> 
+  pivot_longer(cols=Gender:Dependents, values_to="class", names_to="variable") |>
+  summarise(value=n(), .by=c(variable, class)) |>
+  mutate(pct = value/sum(value), .by=variable) |> 
   mutate(
     class = factor(class, levels=c("No","Yes", "Female", "Male")),
-    name= forcats::fct_rev(factor(name, levels=c("Gender", "SeniorCitizen", 
+    class.lbl = if_else(pct > .2, paste0(class, " (", scales::percent(pct,accuracy=1), ")"), class),
+    variable = forcats::fct_rev(factor(variable, levels=c("Gender", "SeniorCitizen", 
                                                  "Partner", "Dependents")))
     ) |> 
-  summarise(value=n(), .by=c(class, name)) |>
-  mutate(pct = value/sum(value), .by=name) |> 
-  ggplot(aes(y=name, x=pct, fill=class)) +
+  ggplot(aes(y=variable, x=pct, fill=class, group=class)) +
   geom_col(color="white") +
-  geom_text(aes(label=scales::percent(pct, accuracy=1), group=class), 
+  geom_text(aes(label=class.lbl, group=class), 
             position = position_fill(.5), check_overlap=T, size=3) +
   scale_x_continuous(expand=expansion(mult=c(0,.0)), breaks=NULL) +
-  theme(panel.grid.major.x=element_blank(), legend.position="bottom") +
+  theme(panel.grid.major.x=element_blank(), legend.position="none") +
   labs(title="Variáveis demográficas", 
        subtitle=glue::glue("n = {nrow(df1)}"), x=NULL, y=NULL)
 ```
@@ -212,7 +300,7 @@ A proporção de `Churn` nas variáveis demográficas leva a crer que a variáve
 
 Clientes que são `SeniorCitizens`, clientes que não têm parceiros e clientes sem dependentes parecem ter maior propensão ao cancelamento.
 
-```{r echo=FALSE, fig.asp=1, fig.width=4}
+```{r bidemog, echo=FALSE, fig.asp=1, fig.width=4, fig.cap="*Gráfico das variáveis demográficas versus Churn.*"}
 ggbivariate(df1 |> select(Gender:Dependents, Churn), 
             outcome="Churn", 
             rowbar_args = list(colour = "white",
@@ -225,51 +313,52 @@ ggbivariate(df1 |> select(Gender:Dependents, Churn),
   labs(subtitle=glue::glue("n = {nrow(df1)}"))
 ```
 
+
 \
 
-**Serviços contratados**
+### Serviços contratados
+
+
 
 Sendo uma empresa de telecomunicações, todos os clientes têm `PhoneService` e/ou `InternetService` contratado. Especificamente verifica-se que a maioria (`r round(nrow(filter(df1,PhoneService=="Yes" & InternetService != "No"))/nrow(df1)*100)`%) dos clientes têm tanto internet quanto telefonia.
 
-Em relação ao padrão de serviços de telefonia contratados, como `r round(nrow(filter(df1,PhoneService=="Yes"))/nrow(df1)*100)`% dos clientes têm telefonia e `r round(nrow(filter(df1,MultipleLines=="Yes"))/nrow(df1)*100)`% dos clientes têm múltiplas linhas, quase a metade dos clientes de telefonia tem mais de uma linha. 
+Em relação ao padrão de serviços de telefonia contratados, como `r round(nrow(filter(df1,PhoneService=="Yes"))/nrow(df1)*100)`% dos clientes têm telefonia e `r round(nrow(filter(df1,MultipleLines=="Yes"))/nrow(df1)*100)`% dos clientes têm múltiplas linhas, quase a metade dos clientes de telefonia tem mais de uma linha.
 
+Clientes em fibra ótica são um pouco mais frequentes que clientes com DSL. Dos clientes que assinam internet com a empresa, `r round(nrow(filter(df1,InternetService=="Fiber optic"))/nrow(df1)*100)`% contrataram fibra ótica e `r round(nrow(filter(df1,InternetService=="DSL"))/nrow(df1)*100)`% contrataram DSL.
 
-Clientes em fibra ótica são um pouco mais frequentes que clientes com DSL. Dos clientes que assinam internet com a empresa, `r round(nrow(filter(df1,InternetService=="Fiber optic"))/nrow(df1)*100)`% contrataram fibra ótica e `r round(nrow(filter(df1,InternetService=="DSL"))/nrow(df1)*100)`% contrataram DSL.  
-
-
-Verifica-se no dataset também que `r round(nrow(filter(df1,InternetService!="No" & n.internet>0))/nrow(filter(df1,InternetService!="No"))*100)`% dos clientes com internet têm algum tipo de serviço adicional contratado. Como se vê na Figura abaixo, a maioria dos serviços adicionais não chega a ser contratado por metade dos clientes com internet, exceto os serviços de *streaming*.  
+Verifica-se no dataset também que `r round(nrow(filter(df1,InternetService!="No" & n.internet>0))/nrow(filter(df1,InternetService!="No"))*100)`% dos clientes com internet têm algum tipo de serviço adicional contratado. Como se vê na Figura abaixo, a maioria dos serviços adicionais não chega a ser contratado por metade dos clientes com internet, exceto os serviços de *streaming*.
 
 Os serviços adicionais mais frequentes são `StreamingTV` e `StreamingMovies`. De fato, dos clientes com serviços de internet, verifica-se que `r round(nrow(filter(df1,InternetService!="No" & n.streaming>0))/nrow(filter(df1,InternetService!="No"))*100)`% contratam TV ou Movies ou ambos. Seria interessante conversar com a equipe de negócios para checar a diferença entre esses dois serviços e verificar se faria sentido juntar os clientes destes serviços em uma única variável, caso isso melhorasse a performance do modelo em produção.
 
-
 ```{r echo=FALSE, fig.width=5, fig.asp=.7}
 df1 |> select(PhoneService:StreamingMovies) |> 
-  pivot_longer(cols=PhoneService:StreamingMovies, values_to="class") |> 
-  mutate(name = forcats::fct_rev(
-    factor(name, levels=c("PhoneService", "MultipleLines", "InternetService", 
-                          "OnlineSecurity", "OnlineBackup", "DeviceProtection",
-                          "TechSupport", "StreamingTV", "StreamingMovies"))
+  pivot_longer(cols=PhoneService:StreamingMovies, values_to="class", names_to="variable") |> 
+  summarise(value=n(), .by=c(variable, class)) |>
+  mutate(pct = value/sum(value), .by=variable) |> 
+  mutate(
+    class.lbl = if_else(pct>.2, paste0(class," (",scales::percent(pct,accuracy=1),")"), class),
+    variable = forcats::fct_rev(
+      factor(variable, levels=c("PhoneService", "MultipleLines", "InternetService", 
+                                "OnlineSecurity", "OnlineBackup", "DeviceProtection",
+                                "TechSupport", "StreamingTV", "StreamingMovies"))
     )) |>
-  summarise(value=n(), .by=c(class, name)) |>
-  mutate(pct = value/sum(value), .by=name) |> 
-  ggplot(aes(y=name, x=pct, fill=class)) +
+  ggplot(aes(y=variable, x=pct, fill=class, group=class)) +
   geom_col(color="white") +
-  geom_text(aes(label=scales::percent(pct, accuracy=1), group=class), 
+  geom_text(aes(label=class.lbl, group=class), 
             position = position_fill(.5), check_overlap=T, size=3) +
   scale_x_continuous(expand=expansion(mult=c(0,.0)), breaks=NULL) +
-  theme(panel.grid.major.x=element_blank(), legend.position="bottom") +
+  theme(panel.grid.major.x=element_blank(), legend.position="none") +
   labs(title="Serviços contratados", 
        subtitle=glue::glue("n = {nrow(df1)}"), x=NULL, y=NULL)
 ```
 
 \
 
-A contratação de serviços de `PhoneService` e talvez `MultipleLines` parece ter pouca diferença em termos de proporção de `Churn`, levantando a hipótese de baixa relevância explicativa dessas variáveis para nossa variável target. 
+A contratação de serviços de `PhoneService` e talvez `MultipleLines` parece ter pouca diferença em termos de proporção de `Churn`, levantando a hipótese de baixa relevância explicativa dessas variáveis para nossa variável target.
 
 Já a contratação de `InternetService` parece ser uma variável mais relevante para explicar a propensão ao cancelamento. Clientes com serviços de internet - seja DSL ou fibra ótica - são significamente mais propensos ao cancelamento.
 
-
-```{r echo=FALSE, fig.asp=.9, fig.width=4}
+```{r chrnServices, echo=FALSE, fig.asp=.9, fig.width=4, fig.cap="*Gráfico das variáveis de serviços assinados versus Churn.*"}
 ggbivariate(df1 |> select(PhoneService:InternetService, Churn), 
             outcome="Churn", 
             rowbar_args = list(colour = "white",
@@ -287,7 +376,7 @@ ggbivariate(df1 |> select(PhoneService:InternetService, Churn),
 
 Clientes com serviços de internet que não contratam serviços adicionais parecem ter maior propensão ao cancelamento exceto quando o serviço adicional é `StreamingTV` ou `StreamingMovies`.
 
-```{r echo=FALSE, fig.asp=1.3, fig.width=4}
+```{r chrnInternet, echo=FALSE, fig.asp=1.3, fig.width=4, fig.cap="*Gráfico das variáveis de serviços de internet assinados versus Churn.*"}
 ggbivariate(df1 |> select(OnlineSecurity:StreamingMovies, Churn), 
                   outcome="Churn", 
                   rowbar_args = list(colour = "white",
@@ -301,35 +390,39 @@ ggbivariate(df1 |> select(OnlineSecurity:StreamingMovies, Churn),
   labs(subtitle=glue::glue("n = {nrow(df1)}"))
 ```
 
-
 É interessante notar com relação aos serviços contratados que a base de dados já está estruturada como se cada serviço fosse uma variável binária (sim/não). Portanto, não é necessário fazer a transformação de variáveis categóricas em numéricas usando variáveis *dummy* ou *one-hot-encoding*.
 
 \
 
-**Informações da conta do cliente**
+### Informações da conta
 
-A maioria dos clientes tem contrato renovado mensalmente (`r round(nrow(filter(df1,Contract=="Month-to-month"))/nrow(df1)*100)`%) e dispensou o recebimento da fatura em papel (`r round(nrow(filter(df1,PaperlessBilling=="Yes"))/nrow(df1)*100)`%). A maioria (`r round(nrow(filter(df1,PaymentMethod %in% c("Electronic check", "Mailed check")))/nrow(df1)*100)`%) dos clientes faz pagamentos por cheque enviado pelo correio ou por meio eletrônico -- ou seja, não adota uma forma de pagamento automática. 
-
+A maioria dos clientes tem contrato renovado mensalmente (`r round(nrow(filter(df1,Contract=="Month-to-month"))/nrow(df1)*100)`%) e dispensou o recebimento da fatura em papel (`r round(nrow(filter(df1,PaperlessBilling=="Yes"))/nrow(df1)*100)`%). A maioria (`r round(nrow(filter(df1,PaymentMethod %in% c("Electronic check", "Mailed check")))/nrow(df1)*100)`%) dos clientes faz pagamentos por cheque enviado pelo correio ou por meio eletrônico -- ou seja, não adota uma forma de pagamento automática.
 
 ```{r echo=FALSE, fig.width=6, fig.asp=.45}
 df1 |> select(Contract:PaymentMethod) |> 
-  pivot_longer(cols=c(Contract:PaymentMethod), values_to="class") |> 
+  pivot_longer(cols=c(Contract:PaymentMethod), values_to="class", names_to="variable") |> 
+  summarise(value=n(), .by=c(variable, class)) |>
+  mutate(pct = value/sum(value), .by=variable) |>
   mutate(
-    class = factor(class, levels=c("Month-to-month", "One year", "Two year",
-                                   "No","Yes", 
-                                   "Bank transfer (automatic)", "Credit card (automatic)",
-                                   "Electronic check", "Mailed check")),
-    name= factor(name, levels=c("PaymentMethod", "PaperlessBilling", "Contract"))
+    class = factor(class, 
+                   levels=c("Month-to-month", "One year", "Two year",
+                            "No","Yes", 
+                            "Bank transfer (automatic)", "Credit card (automatic)",
+                            "Electronic check", "Mailed check"),
+                   labels=c("Month-to-month", "One year", "Two year",
+                            "No","Yes", 
+                            "Bank transfer\n", "Credit card\n",
+                            "Electronic check\n", "Mailed check\n")),
+    class.lbl = if_else(pct>.2, paste0(class," (",scales::percent(pct,accuracy=1),")"), class),
+    variable= factor(variable, levels=c("PaymentMethod", "PaperlessBilling", "Contract"))
   ) |> 
-  summarise(value=n(), .by=c(class, name)) |>
-  mutate(pct = value/sum(value), .by=name) |> 
-  ggplot(aes(y=name, x=pct, fill=class)) +
+  ggplot(aes(y=variable, x=pct, fill=class, group=class)) +
   geom_col(color="white") +
-  geom_text(aes(label=scales::percent(pct, accuracy=1), group=class), 
+  geom_text(aes(label=class.lbl, group=class), 
             position = position_fill(.5), check_overlap=T, size=3) +
   scale_x_continuous(expand=expansion(mult=c(0,.0)), breaks=NULL) +
+  theme(panel.grid.major.x=element_blank(), legend.position="none") +
   scale_fill_brewer(palette="Set3") +
-  theme(panel.grid.major.x=element_blank()) +
   labs(title="Informações da conta", 
        subtitle=glue::glue("n = {nrow(df1)}"), x=NULL, y=NULL)
 ```
@@ -340,8 +433,7 @@ Clientes que dispensaram o recebimento de faturas em papel são mais propensos a
 
 Em `PaymentMethod`, clientes que adotam pagamento por cheque eletrônico são os mais propensos ao cancelamento. A proporção de clientes cancelados com pagamento automático via cartão de crédito ou transferência bancária é muito similar. Seria interessante conversar com a equipe de negócios para checar se há relevância nas diferenças entre esses dois tipos de pagamento para o cancelamento de clientes e verificar se faria sentido juntar esses clientes em uma classe única de pagamentos automáticos, caso isso traga benefícios para a performance do modelo em produção.
 
-
-```{r echo=FALSE, fig.asp=1.5, fig.width=5}
+```{r chrnAccount, echo=FALSE, fig.asp=1.5, fig.width=5, fig.cap="*Gráfico das variáveis de informações da conta versus Churn.*"}
 ggbivariate(df1 |> select(c(Contract:TotalCharges, Tenure), Churn), 
             outcome="Churn", 
             rowbar_args = list(colour = "white",
@@ -354,22 +446,18 @@ ggbivariate(df1 |> select(c(Contract:TotalCharges, Tenure), Churn),
   scale_color_brewer(palette="Set1") +
   labs(subtitle=glue::glue("n = {nrow(df1)}"))
 ```
-O boxplot aponta concentrações diferentes em relação ao `Churn` para as três variáveis numéricas `MonthlyCharges`, `TotalCharges` e `Tenure`. A faixa de valores entre mínimo e máximo de cada variável é similar para clientes cancelados (`Churned`) e clientes retidos (`Renewed`). Nas três variáveis os clientes cancelados aparentam ter uma distribuição mais concentrada em um intervalo menor que clientes retidos. 
 
-No caso de `TotalCharges` essa maior concentração além de ocorrer em um intervalo menor, ocorre em valores mais baixos da escala comparada à distribuição dos clientes retidos, de forma que os valores mais altos se apresentam como valores atípicos (fora dos limites do intervalo interquartílico calculado para uma distribuição normal). 
+O boxplot aponta concentrações diferentes em relação ao `Churn` para as três variáveis numéricas `MonthlyCharges`, `TotalCharges` e `Tenure`. A faixa de valores entre mínimo e máximo de cada variável é similar para clientes cancelados (`Churned`) e clientes retidos (`Renewed`). Nas três variáveis os clientes cancelados aparentam ter uma distribuição mais concentrada em um intervalo menor que clientes retidos.
+
+No caso de `TotalCharges` essa maior concentração além de ocorrer em um intervalo menor, ocorre em valores mais baixos da escala comparada à distribuição dos clientes retidos, de forma que os valores mais altos se apresentam como valores atípicos (fora dos limites do intervalo interquartílico calculado para uma distribuição normal).
 
 `MonthlyCharges`, que corresponde à parcela do valor pago que decorre de assinaturas mensais, tem uma dispersão bem mais limitada que `TotalCharges` em termos de valores máximos atingidos. A distribuição de `MonthlyCharges` para clientes cancelados està concentrada em um intervalo menor, porém de valores mais elevados que a distribuição dos clientes retidos.
 
-`Tenure` (há quantos meses é cliente) também tem uma distribuição concentrada em um intervalo menor para clientes cancelados que clientes retidos e esse intervalo também abrange valores mais baixos. 
+`Tenure` (há quantos meses é cliente) também tem uma distribuição concentrada em um intervalo menor para clientes cancelados que clientes retidos e esse intervalo também abrange valores mais baixos.
 
+Como pode-se observar na Figura \@ref(fig:histogramas) e nos boxplots da Figura \@ref(fig:chrnAccount), nenhuma das variáveis numéricas parece ter distribuição normal e nem valores extremos.
 
-
-\
-
-Nenhuma das variáveis numéricas parece ter distribuição normal e nem valores extremos.
-
-
-```{r 3-1, echo=FALSE, fig.cap="*Histograma das variáveis numéricas*", fig.width=8, fig.asp=.5}
+```{r histogramas, echo=FALSE, fig.cap="*Histograma das variáveis numéricas*", fig.width=8, fig.asp=.5}
 df1 |> select(Tenure, MonthlyCharges, TotalCharges, Churn) |> 
   pivot_longer(is.numeric) |> 
   mutate(name = factor(name, levels=c("Tenure", "MonthlyCharges", "TotalCharges"),
@@ -395,32 +483,53 @@ df1 |> select(Tenure, MonthlyCharges, TotalCharges, Churn) |>
        x = NULL, y = "Frequência")
 ```
 
+### Correlações
+
 \
 
-As três variáveis numéricas têm correlações estatisticamente significativas e positivas entre si. A correlação entre `Tenure` e `TotalCharges` é a mais forte, sendo que na classe de clientes cancelados essa correlação é mais forte que na de clientes retidos.
+Todas as correlações entre variáveis numéricas e a variável target `Churn` são fracas, o que sugere que nenhuma variável numérica isoladamente é um bom preditor de `Churn`. A variável `Tenure` é a que tem a correlação mais forte com `Churn`, mas ainda assim é uma correlação baixa.
 
-A correlação entre `TotalCharges` e `MonthlyCharges` também tem intensidade moderada a forte, sendo a correlação na classe de clientes cancelados mais fraca que na de clientes retidos. 
-
-
-
-```{r echo=FALSE, fig.asp=1, fig.width=5}
-ggpairs(df1 |> select(is.numeric, Churn), 
-        columns = c("Tenure", "MonthlyCharges", "TotalCharges"), aes(color=Churn, fill=Churn),
-        lower=list(continuous=wrap("density", alpha=.5), 
-                   combo=wrap("facethist", alpha=.5, bins=30)),
-        upper=list(continuous=wrap("cor", title_args=c(size=3.5), group_args=c(size=3.5))),
-        diag=list(continuous=wrap("densityDiag", alpha=.5)),
-        title="Correlações: Churn e variáveis numéricas") +
-  scale_fill_brewer(palette="Set1") +
-  scale_color_brewer(palette="Set1")
+```{r fig.asp=.5, fig.width=5}
+df1 |> select(is.numeric, Churn) |> 
+  mutate(Churn = as.integer(Churn)) |>
+  
+  # Usa o pacote corrr para calcular a correlação de Spearman
+  correlate(method="spearman") |> 
+  focus(Churn) |>
+  mutate(term = fct_reorder(term, Churn)) |>
+  ggplot(aes(y=term, x=Churn)) +
+  geom_col(fill="cadetblue") +
+  geom_text(aes(x=Churn+.08*sign(Churn),label=round(Churn,2)), size=3) +
+  scale_x_continuous(expand=expansion(mult=c(.0,.0)), limits=c(-1,1)) +
+  labs(title="Correlação entre variáveis numéricas e Churn", 
+       subtitle="Coeficiente de Spearman", 
+       x="Correlação para Churn (binary T/F)", y=NULL)
 ```
 
 \
 
-Finaliza preprocessamento da base para modelagem
+As três variáveis numéricas têm correlações estatisticamente significativas e positivas entre si. A correlação entre `Tenure` e `TotalCharges` é a mais forte. Clientes com mais meses de assinatura dos serviços tendem a ser aqueles que têm valor total (incluindo, mas não limitado a mensalidades) mais alto.
+
+A correlação entre `TotalCharges` e `MonthlyCharges` também tem intensidade moderada a forte, sendo a correlação na classe de clientes cancelados mais fraca que na de clientes retidos.
+
+```{r fig.width=4, fig.asp=.7}
+df1 |> select(is.numeric) |> 
+  correlate(method="spearman") |> 
+  rearrange(absolute=T) |>
+  shave() |>
+  rplot(shape=15, print_cor=T) +
+  theme_bw(base_size=9) +
+  theme(panel.grid.major = element_line(colour = "gray92", size = 0.1),
+        plot.title = element_text(size = 10, colour = "gray30", face = "bold"),
+        plot.subtitle = element_text(face = 'italic', colour = "gray50", size=9),
+        plot.caption = element_text(colour = "gray50", hjust=0, size=8)) +
+  labs(title="Correlação entre preditores numéricos", 
+       subtitle="Coeficiente de Spearman")
+```
+
 
 ```{r include=FALSE}
-df2 <- df1 |> select(-starts_with("n."))
+rm(df0)
 ```
 
 
@@ -477,6 +586,8 @@ Na prática, os valores de V são mais frequentemente $5$ ou $10$; geralmente pr
 
 Há variações na aplicação de validações cruzadas, como por exemplo a [validação cruzada com repetição]{.underline}, que cria $R$ repetições de uma validação cruzada V-fold e a [validação cruzada "*leave-one-out"*]{.underline} (LOOCV), que é um caso especial de validação cruzada V-fold com $V = n$, onde $n$ modelos são treinados com $n-1$ observações e cada modelo projeta a observação excluida (técnica utilizada quase exclusivamente quando há amostras muito pequenas de dados). A [validação cruzada de Monte Carlo]{.underline} é uma variação em que a proporção dos dados é determinada aleatoriamente a cada fold. Isso resulta em conjuntos de avaliação que não são mutuamente exclusivos.
 
+Há também outras técnicas de reamostragem, como ["bootstrapping"]{.underline} e também maneiras de testar os modelos em treinamento, como particionar os dados em datasets de validação/treino/teste antes de começar a modelagem.
+
 \
 
 ## Balanceamento de classes
@@ -485,9 +596,35 @@ Há variações na aplicação de validações cruzadas, como por exemplo a [val
 
 Neste conjunto de dados de mais de 7.000 clientes, `r scales::percent(nrow(filter(df1, Churn=="Churned"))/nrow(df1), accuracy=.1)` deles cancelaram os serviços no último mês. A variável de interesse `Churn` está desbalanceada, portanto será necessário:
 
-*  Estratificar o split dos datasets de treino/teste para assegurar que preservem a proporção de classes do `Churn`
+-   Estratificar o split dos datasets de treino/teste para assegurar que preservem a proporção de classes do `Churn`
 
-*  Utilizar técnicas de balanceamento de classes, como a [subamostragem aleatória]{.underline} (*undersampling*) ou [sobreamostragem aleatória]{.underline} (*oversampling*), ou ainda técnicas de [geração sintética de dados]{.underline} como o [SMOTE]{.underline} (Synthetic Minority Over-sampling Technique) para balancear as classes do conjunto de dados de treino antes de fazer o ajuste do modelo.
+-   Utilizar técnicas de balanceamento de classes, como a [subamostragem aleatória]{.underline} (*undersampling*) ou [sobreamostragem aleatória]{.underline} (*oversampling*), ou ainda técnicas de [geração sintética de dados]{.underline} como o [SMOTE]{.underline} (Synthetic Minority Over-sampling Technique) para balancear as classes do conjunto de dados de treino antes de fazer o ajuste do modelo.
+
+
+\
+
+Finaliza preprocessamento da base e separa datasets de treino/teste para modelagem
+
+```{r}
+set.seed(888)
+df1_split <- rsample::initial_split(df1, prop=.75, strata=Churn)
+df1_split
+```
+
+```{r}
+df1_train <- training(df1_split)
+df1_test <- testing(df1_split)
+
+str(df1_train)
+```
+
+
+```{r}
+df1_train |> 
+  summarise(n=n(), .by=Churn) |>
+  mutate(prop = n/sum(n))
+```
+
 
 
 \
@@ -516,9 +653,9 @@ $$
 
 O símbolo $\beta_0$ é a constante que determina a interseção com o eixo Y se X fosse igual a zero, e o símbolo $\beta_1$ é o coeficiente da inclinação de X. A variável Y é conhecida como variável de saída, variável *target* ou variável dependente, pois depende de X. A variável X é conhecida como variável explicativa, *feature* ou variável independente.
 
-Considerando o gráfico de dispersão na Figura \@ref(fig:5-1) que mostra a largura da pétala de um tipo de flor (`Petal.Width`) versus o comprimento da sua pétala, pode-se visualizar como a largura está relacionada ao comprimento das pétalas. Parece que quanto maior o comprimento, maior a largura.
+Considerando o gráfico de dispersão na Figura \@ref(fig:dispersao1) que mostra a largura da pétala de um tipo de flor (`Petal.Width`) versus o comprimento da sua pétala, pode-se visualizar como a largura está relacionada ao comprimento das pétalas. Parece que quanto maior o comprimento, maior a largura.
 
-```{r 5-1, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width*", fig.width=5, fig.asp=.7}
+```{r dispersao1, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width*", fig.width=5, fig.asp=.7}
 iris |> 
   filter(Species == "versicolor") |>
   ggplot(aes(x=Petal.Length, y=Petal.Width)) +
@@ -535,11 +672,9 @@ $$
 Petal.Width = \beta_0 + \beta_1 Petal.Length
 $$\
 
+A linha de regressão deste modelo é a linha azul exibida na Figura \@ref(fig:dispersao2).
 
-A linha de regressão deste modelo é a linha azul exibida na Figura \@ref(fig:5-2).
-
-
-```{r 5-2, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width com regressão linear simples*", fig.width=5, fig.asp=.7}
+```{r dispersao2, echo=FALSE, fig.cap="*Gráfico de dispersão Sepal.Length x Sepal.Width com regressão linear simples*", fig.width=5, fig.asp=.7}
 #ggplot needs a dataframe
 dat <- iris |> filter(Species == "versicolor")
 fit <- lm(Petal.Width~Petal.Length,data=dat)
@@ -556,7 +691,6 @@ ggplot(dat, aes(x=Petal.Length,y=Petal.Width))+
   labs(title = "Gráfico de dispersão Sepal.Length x Sepal.Width",
        subtitle = "Iris dataset")
 ```
-
 
 \
 
@@ -592,7 +726,7 @@ $$
 Em vez de uma linha, tem-se um modelo linear – a relação entre cada coeficiente e sua variável (feature) é linear. Essa equação é conhecida como regressão linear múltipla ou [*multiple linear regression*]{.unerline} \@ref(eq:reg-linear-multiple). Todos os outros conceitos da regressão linear simples, como o ajuste por mínimos quadrados e a definição de valores ajustados e resíduos, estendem-se à configuração de regressão linear múltipla.
 
 \
-A [**regressão logística**]{.underline} é análoga à regressão linear múltipla  \@ref(eq:reg-linear-multiple), exceto que o resultado é [binário]{.underline}. Várias transformações são empregadas para converter o problema em algo no qual um modelo linear possa ser ajustado. A regressão logística é uma abordagem de modelo estruturado, em vez de uma abordagem centrada em dados. Devido à sua velocidade de processamento com menor custo computacional e sua rapidez na classificação de novos dados, é um método bastante adotado.
+A [**regressão logística**]{.underline} é análoga à regressão linear múltipla \@ref(eq:reg-linear-multiple), exceto que o resultado é [binário]{.underline}. Várias transformações são empregadas para converter o problema em algo no qual um modelo linear possa ser ajustado. A regressão logística é uma abordagem de modelo estruturado, em vez de uma abordagem centrada em dados. Devido à sua velocidade de processamento com menor custo computacional e sua rapidez na classificação de novos dados, é um método bastante adotado.
 
 Os principais ingredientes para a regressão logística são a função de resposta logística ou *logistic response function* \@ref(eq:logistic-response) e a função log-odds ou logit \@ref(eq:logit), no qual mapeia-se uma probabilidade (entre 0 e 1) para uma escala mais ampla, adequada para modelagem linear.
 
@@ -644,7 +778,7 @@ $$
 
 A função *log-odds*, também conhecida como função logit \@ref(eq:logit), mapeia a probabilidade $p$ de $(0,1)$ para qualquer valor $(-\infty, +\infty)$. Assim o círculo de transformação se fecha, aplicando um modelo linear para prever uma probabilidade, que por sua vez pode ser mapeado para um rótulo de classe aplicando-se uma regra de corte – qualquer observação com uma probabilidade maior que o ponto de corte é classificado como 1.
 
-```{r 5-3, echo=FALSE, fig.cap="*Gráfico de função logit que coloca uma probabilidade em uma escala aplicável a um modelo linear.*", fig.width=5, fig.asp=.7}
+```{r logit, echo=FALSE, fig.cap="*Gráfico de função logit que coloca uma probabilidade em uma escala aplicável a um modelo linear.*", fig.width=5, fig.asp=.7}
 # Plot logit(p) x p
 ggplot(data=tibble(x=seq(0.01, 0.99, by=0.01), 
                    y=log(seq(0.01, 0.99, by=0.01)/(1-seq(0.01, 0.99, by=0.01)))),
@@ -672,8 +806,8 @@ A resposta na função de regressão logística é o log das probabilidades de u
 1.  Definir o objetivo
 2.  Analisar os dados (Exploratory Data Analysis - EDA)
 3.  Transformar os dados para modelagem (*Feature Engineering*)
-4.  Ajustar e selecionar modelo(s)
-5.  Testar projeções
+4.  Ajustar e selecionar modelo
+5.  Testar projeções no modelo selecionado
 6.  Documentar e comunicar conclusões
 
 \
@@ -742,7 +876,21 @@ Quando os objetivos originais da modelagem são alcançadas, normalmente as últ
 **Treine um modelo de regressão logística para realizar a classificação.**
 
 ```{r}
-# library(glm)  # Logistic regression model
+rec_simple <- 
+  recipe(Churn ~ ., data=df1_train) |> 
+  update_role(customerID, new_role="ID")
+```
+
+\
+
+Selecionar as métricas de classificação e probabilidade para avaliar a performance de todos os modelos.
+
+```{r}
+performance_metrics <- 
+  metric_set(accuracy, 
+             roc_auc, sensitivity, specificity,
+             f_meas, precision, recall, # <== F1-score
+             brier_class)
 ```
 
 \
@@ -755,38 +903,186 @@ Quando os objetivos originais da modelagem são alcançadas, normalmente as últ
 
 \
 
-## XXX Árvore de Decisão
+## Árvore de Decisão
 
 **Treine um modelo de árvore de decisão para realizar a classificação.**
 
 ```{r}
-# library(rpart)  # Decision Tree 
+tree_spec <- 
+  decision_tree(tree_depth=5) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+tree_fit <- 
+  workflow() |>
+  add_model(tree_spec) |> 
+  add_recipe(rec_simple) |>
+  fit(data=df1_train)
+
+tree_fit
+```
+
+\
+
+```{r}
+extract_fit_engine(tree_fit) |> 
+  rpart.plot::rpart.plot(yes.text="YES", no.text="NO", roundint=FALSE)
+```
+
+\
+
+Use the model to make predictions on the test set.
+
+```{r}
+tree_test <- augment(tree_fit, new_data=df1_test)
+```
+
+
+\
+
+```{r fig.asp=1, fig.width=2}
+df3_conf_matrix <- conf_mat(tree_test, truth=Churn, estimate=.pred_class) |> 
+  tidy() |> 
+  tidyConfMat() |> 
+  mutate(model="DecTree0")
+
+plotConfMat(df3_conf_matrix)
+```
+
+\
+
+```{r fig.width=3, fig.asp=1}
+tree_roc_curve <- 
+  tree_test |> 
+  roc_curve(truth=Churn, .pred_Churned)
+
+autoplot(tree_roc_curve, size=1.5) +
+  scale_x_continuous(expand=expansion(mult=c(0,0))) +
+  scale_y_continuous(expand=expansion(mult=c(0,0))) +
+  theme_light(base_size=9) +
+  labs(title="ROC curve of Decision Tree model", 
+       x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
 ```
 
 \
 
 **Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
 
-```{r}
 
+```{r}
+df4_performance <- tree_test |> 
+    performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+    mutate(.estimate = round(.estimate, 4),
+           model="DecTree0")
+
+df4_performance |> filter(.metric %in% c("accuracy", "precision", "recall", "f_meas"))
 ```
+
 
 \
 
-## XXX Random Forest
+## Random Forest
 
 **Treine um modelo de random forest para realizar a classificação.**
 
 ```{r}
-# library(ranger) # Random Forest 
+rf_spec <- 
+  rand_forest(
+    mtry  = 2,  # nr of predictors that will be randomly selected, defaults to sqrt(ncol(x))
+    min_n = 10, # target nr of obs in node to split, defaults to 10/classification and 5/regression
+    trees = 500
+  ) |>
+  set_engine("ranger", num.threads=parallel::detectCores(), importance="impurity_corrected") |>
+  set_mode("classification")
+
+set.seed(2021)
+rf_fit <- 
+  workflow() |>
+  add_recipe(rec_simple) |>
+  add_model(rf_spec) |>
+  fit(df1_train)
+
+rf_fit
+```
+
+\
+
+
+```{r}
+rf_test <- augment(rf_fit, new_data=df1_test)
+```
+
+
+\
+
+```{r}
+df3_conf_matrix <- 
+  bind_rows(
+    df3_conf_matrix,
+    conf_mat(rf_test, truth=Churn, estimate=.pred_class) |> 
+      tidy() |> tidyConfMat() |> 
+      mutate(model="RndFor0")
+  )
+```
+
+
+```{r fig.asp=1, fig.width=2}
+plotConfMat(df3_conf_matrix |> filter(model=="RndFor0"))
+```
+
+\
+
+```{r fig.width=3, fig.asp=1}
+rf_roc_curve <- rf_test |> 
+  roc_curve(truth=Churn, .pred_Churned)
+
+autoplot(rf_roc_curve) +
+  coord_cartesian(xlim = c(0,1), ylim=c(0,1.01), expand = FALSE) +
+  theme_light(base_size=9) +
+  labs(title="ROC curve of Random Forest model", 
+       x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
+```
+
+\
+
+A seguir vamos verificar a importância das variáveis.
+
+
+```{r fig.width=4, fig.asp=.8}
+rf_res_features <- ranger::importance(extract_fit_engine(rf_fit)) |> tidy() |> 
+  arrange(desc(x))
+
+rf_res_features |> 
+  mutate(names = fct_reorder(names, x)) |>
+  ggplot(aes(x=x, y=names)) +
+  geom_col(fill="cadetblue") +
+  scale_x_continuous(expand=expansion(mult=c(0,0.1))) +
+  theme(panel.grid.major.y=element_blank()) +
+  labs(title="Variable importance of Random Forest model", 
+       subtitle="Based on Gini index adjusted for number of categories",
+       x="Importance", y=NULL)
 ```
 
 \
 
 **Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
 
-```{r}
 
+```{r}
+df4_performance <- 
+   bind_rows(
+     df4_performance,
+     rf_test |> 
+       performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+       mutate(.estimate = round(.estimate, 4),
+              model="RndFor0")
+   )
+```
+
+
+```{r}
+df4_performance |> 
+  filter(model=="RndFor0", .metric %in% c("accuracy", "precision", "recall", "f_meas"))
 ```
 
 \
