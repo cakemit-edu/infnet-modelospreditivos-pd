@@ -70,7 +70,8 @@ plotConfMat <- function(df) {
     scale_y_continuous(expand=expansion(mult=c(0,0)), breaks=NULL) +
     theme(legend.position = "none") +
     scale_fill_identity() +
-    labs(title = "Confusion matrix", x="TRUTH", y="PREDICTION")
+    labs(title = "Confusion matrix", 
+         x="TRUTH", y="PREDICTION")
 }
 ```
 
@@ -88,7 +89,11 @@ Escolha uma base de dados para realizar esse projeto, onde você utilizará algo
 
 **No relatório final, anexe um printscreen evidenciando que o Knime está funcionando com os componentes**
 
+
 ![Printscreen do Knime instalado na minha máquina](.imgs/Rstudio.png)
+
+
+\
 
 ```{r}
 print(sessionInfo(), locale=FALSE)
@@ -107,7 +112,7 @@ Especificamente, nosso projeto fará uma modelagem para a classificação dos cl
 Adicionalmente, gostaríamos de poder avaliar a importância relativa das variáveis explicativas do modelo final para identificar os fatores mais influenciadores do risco de cancelamento do cliente.
 
 \
-Este projeto é baseado em um [conjunto de dados da IBM no Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn).
+Este projeto é baseado em um [conjunto de dados da IBM no Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) com 21 variáveis e mais de 7 mil observações.
 
 ```{r}
 df0 <- 
@@ -299,13 +304,16 @@ A proporção de `Churn` nas variáveis demográficas leva a crer que a variáve
 
 Clientes que são `SeniorCitizens`, clientes que não têm parceiros e clientes sem dependentes parecem ter maior propensão ao cancelamento.
 
-```{r bidemog, echo=FALSE, fig.asp=1, fig.width=4, fig.cap="*Gráfico das variáveis demográficas versus Churn.*"}
-ggbivariate(df1 |> select(Gender:Dependents, Churn), 
-            outcome="Churn", 
-            rowbar_args = list(colour = "white",
-                               size = 3,
-                               label_format = scales::label_percent(accurary=1)),
-            title = "Churn x Variaveis demograficas") +
+```{r bidemog, echo=FALSE, fig.width=4, fig.height=4, fig.cap="*Gráfico das variáveis demográficas versus Churn.*"}
+df1 |> 
+  select(Gender:Dependents, Churn) |> 
+  ggbivariate(
+    outcome="Churn", 
+    rowbar_args = list(colour = "white",
+                       size = 3,
+                       label_format = scales::label_percent(accurary=1)),
+    title = "Churn x Variaveis demograficas"
+  ) +
   theme(panel.spacing=unit(.5, "lines"), legend.position="bottom") +
   scale_fill_brewer(palette="Set1") +
   scale_color_brewer(palette="Set1") +
@@ -317,25 +325,25 @@ ggbivariate(df1 |> select(Gender:Dependents, Churn),
 ### Serviços contratados
 
 ```{r include=FALSE}
-comInternetTelefone <- round(nrow(filter(df1,PhoneService=="Yes",InternetService!="No"))/nrow(df1)*100)
-telefonia <- round(nrow(filter(df1,PhoneService=="Yes"))/nrow(df1)*100)
-multiplelines <- round(nrow(filter(df1,MultipleLines=="Yes"))/nrow(df1)*100)
-internetService <- round(nrow(filter(df1,InternetService=="Fiber optic"))/nrow(df1)*100)
-dsl <- round(nrow(filter(df1,InternetService=="DSL"))/nrow(df1)*100)
-n.internet <- round(nrow(filter(df1,InternetService!="No" & n.internet > 0)) / nrow(filter(df1,InternetService!="No"))*100)
-n.streaming <- round(df1 |> filter(StreamingTV=="Yes"|StreamingMovies=="Yes") |> nrow() / nrow(df1)*100)
+v.comInternetTelefone <- round(nrow(filter(df1,PhoneService=="Yes",InternetService!="No"))/nrow(df1)*100)
+v.telefonia <- round(nrow(filter(df1,PhoneService=="Yes"))/nrow(df1)*100)
+v.multiplelines <- round(nrow(filter(df1,MultipleLines=="Yes"))/nrow(df1)*100)
+v.internetService <- round(nrow(filter(df1,InternetService=="Fiber optic"))/nrow(df1)*100)
+v.dsl <- round(nrow(filter(df1,InternetService=="DSL"))/nrow(df1)*100)
+v.n.internet <- round(nrow(filter(df1,InternetService!="No" & n.internet > 0)) / nrow(filter(df1,InternetService!="No"))*100)
+v.n.streaming <- round(df1 |> filter(StreamingTV=="Yes"|StreamingMovies=="Yes") |> nrow() / nrow(df1)*100)
 ```
 
 
-Sendo uma empresa de telecomunicações, todos os clientes têm `PhoneService` e/ou `InternetService` contratado. Especificamente verifica-se que a maioria (`r comInternetTelefone`%) dos clientes têm tanto internet quanto telefonia.
+Sendo uma empresa de telecomunicações, todos os clientes têm `PhoneService` e/ou `InternetService` contratado. Especificamente verifica-se que a maioria (`r v.comInternetTelefone`%) dos clientes têm tanto internet quanto telefonia.
 
-Em relação ao padrão de serviços de telefonia contratados, como `r telefonia`% dos clientes têm telefonia e `r multiplelines`% dos clientes têm múltiplas linhas, quase a metade dos clientes de telefonia tem mais de uma linha.
+Em relação ao padrão de serviços de telefonia contratados, como `r v.telefonia`% dos clientes têm telefonia e `r v.multiplelines`% dos clientes têm múltiplas linhas, quase a metade dos clientes de telefonia tem mais de uma linha.
 
-Clientes em fibra ótica são um pouco mais frequentes que clientes com DSL. Dos clientes que assinam internet com a empresa, `r internetService`% contrataram fibra ótica e `r dsl`% contrataram DSL.
+Clientes em fibra ótica são um pouco mais frequentes que clientes com DSL. Dos clientes que assinam internet com a empresa, `r v.internetService`% contrataram fibra ótica e `r v.dsl`% contrataram DSL.
 
-Verifica-se no dataset também que `r n.internet`% dos clientes com internet têm algum tipo de serviço adicional contratado. Como se vê na Figura abaixo, a maioria dos serviços adicionais não chega a ser contratado por metade dos clientes com internet, exceto os serviços de *streaming*.
+Verifica-se no dataset também que `r v.n.internet`% dos clientes com internet têm algum tipo de serviço adicional contratado. Como se vê na Figura abaixo, a maioria dos serviços adicionais não chega a ser contratado por metade dos clientes com internet, exceto os serviços de *streaming*.
 
-Os serviços adicionais mais frequentes são `StreamingTV` e `StreamingMovies`. De fato, dos clientes com serviços de internet, verifica-se que `r n.streaming`% contratam TV ou Movies ou ambos. Seria interessante conversar com a equipe de negócios para checar a diferença entre esses dois serviços e verificar se faria sentido juntar os clientes destes serviços em uma única variável, caso isso melhorasse a performance do modelo em produção.
+Os serviços adicionais mais frequentes são `StreamingTV` e `StreamingMovies`. De fato, dos clientes com serviços de internet, verifica-se que `r v.n.streaming`% contratam TV ou Movies ou ambos. Seria interessante conversar com a equipe de negócios para checar a diferença entre esses dois serviços e verificar se faria sentido juntar os clientes destes serviços em uma única variável, caso isso melhorasse a performance do modelo em produção.
 
 ```{r echo=FALSE, fig.width=5, fig.asp=.7}
 df1 |> select(PhoneService:StreamingMovies) |> 
@@ -360,11 +368,6 @@ df1 |> select(PhoneService:StreamingMovies) |>
 ```
 
 \
-
-```{r include=FALSE}
-# rm(comInternetTelefone, telefonia, multiplelines, internetService, dsl, n.internet, n.streaming)
-# gc()
-```
 
 
 A contratação de serviços de `PhoneService` e talvez `MultipleLines` parece ter pouca diferença em termos de proporção de `Churn`, levantando a hipótese de baixa relevância explicativa dessas variáveis para nossa variável target.
@@ -503,20 +506,24 @@ df1 |> select(Tenure, MonthlyCharges, TotalCharges, Churn) |>
 Todas as correlações entre variáveis numéricas e a variável target `Churn` são fracas, o que sugere que nenhuma variável numérica isoladamente é um bom preditor de `Churn`. A variável `Tenure` é a que tem a correlação mais forte com `Churn`, mas ainda assim é uma correlação baixa.
 
 ```{r fig.asp=.5, fig.width=5}
-df1 |> select(is.numeric, Churn) |> 
-  mutate(Churn = as.integer(Churn)) |>
-  
-  # Usa o pacote corrr para calcular a correlação de Spearman
-  correlate(method="spearman") |> 
-  focus(Churn) |>
-  mutate(term = fct_reorder(term, Churn)) |>
-  ggplot(aes(y=term, x=Churn)) +
-  geom_col(fill="cadetblue") +
-  geom_text(aes(x=Churn+.08*sign(Churn),label=round(Churn,2)), size=3) +
-  scale_x_continuous(expand=expansion(mult=c(.0,.0)), limits=c(-1,1)) +
-  labs(title="Correlação entre variáveis numéricas e Churn", 
-       subtitle="Coeficiente de Spearman", 
-       x="Correlação para Churn (binary T/F)", y=NULL)
+suppressMessages(
+  print(
+    df1 |> select(is.numeric, Churn) |> 
+      mutate(Churn = as.integer(Churn)) |>
+      
+      # Usa o pacote corrr para calcular a correlação de Spearman
+      correlate(method="spearman") |> 
+      focus(Churn) |>
+      mutate(term = fct_reorder(term, Churn)) |>
+      ggplot(aes(y=term, x=Churn)) +
+      geom_col(fill="cadetblue") +
+      geom_text(aes(x=Churn+.08*sign(Churn),label=round(Churn,2)), size=3) +
+      scale_x_continuous(expand=expansion(mult=c(.0,.0)), limits=c(-1,1)) +
+      labs(title="Correlação entre variáveis numéricas e Churn", 
+           subtitle="Coeficiente de Spearman", 
+           x="Correlação para Churn (binary T/F)", y=NULL)
+  )
+)
 ```
 
 \
@@ -526,18 +533,23 @@ As três variáveis numéricas têm correlações estatisticamente significativa
 A correlação entre `TotalCharges` e `MonthlyCharges` também tem intensidade moderada a forte, sendo a correlação na classe de clientes cancelados mais fraca que na de clientes retidos.
 
 ```{r fig.width=4, fig.asp=.7}
-df1 |> select(is.numeric) |> 
-  correlate(method="spearman") |> 
-  rearrange(absolute=T) |>
-  shave() |>
-  rplot(shape=15, print_cor=T) +
-  theme_bw(base_size=9) +
-  theme(panel.grid.major = element_line(colour = "gray92", size = 0.1),
-        plot.title = element_text(size = 10, colour = "gray30", face = "bold"),
-        plot.subtitle = element_text(face = 'italic', colour = "gray50", size=9),
-        plot.caption = element_text(colour = "gray50", hjust=0, size=8)) +
-  labs(title="Correlação entre preditores numéricos", 
-       subtitle="Coeficiente de Spearman")
+suppressMessages(
+  print(
+    df1 |> 
+      select(is.numeric) |> 
+      correlate(method="spearman") |> 
+      rearrange(absolute=T) |>
+      shave() |>
+      rplot(shape=15, print_cor=T) +
+      theme_bw(base_size=9) +
+      theme(panel.grid.major = element_line(colour = "gray92", size = 0.1),
+            plot.title = element_text(size = 10, colour = "gray30", face = "bold"),
+            plot.subtitle = element_text(face = 'italic', colour = "gray50", size=9),
+            plot.caption = element_text(colour = "gray50", hjust=0, size=8)) +
+      labs(title="Correlação entre preditores numéricos", 
+           subtitle="Coeficiente de Spearman")
+  )
+)
 ```
 
 
@@ -704,6 +716,12 @@ ggplot(dat, aes(x=Petal.Length,y=Petal.Width))+
   labs(title = "Gráfico de dispersão Sepal.Length x Sepal.Width",
        subtitle = "Iris dataset")
 ```
+
+
+```{r include=FALSE}
+rm(fit, dat); gc()
+```
+
 
 \
 
@@ -882,43 +900,235 @@ O processo de modelagem é iterativo. Após uma execução inicial dessa sequên
 
 Quando os objetivos originais da modelagem são alcançadas, normalmente as últimas etapas são finalizar, documentar e comunicar o modelo.
 
-\
 
-## XXX Regressão logística
-
-**Treine um modelo de regressão logística para realizar a classificação.**
-
-```{r}
-rec_simple <- 
-  recipe(Churn ~ ., data=df1_train) |> 
-  update_role(customerID, new_role="ID")
-```
+## Modelagem
 
 \
 
-Selecionar as métricas de classificação e probabilidade para avaliar a performance de todos os modelos.
+Escolhe as métricas de classificação e de probabilidade para avaliar a performance de **todos** os modelos.
 
 ```{r}
 performance_metrics <- 
   metric_set(accuracy, 
              roc_auc, sensitivity, specificity,
-             f_meas, precision, recall, # <== F1-score
+             f_meas, precision, recall, # <== f_meas = F1-score
              brier_class)
+```
+
+\
+
+### Regressão logística
+
+**Treine um modelo de regressão logística para realizar a classificação.**
+
+\
+
+[Etapa 3] Transforma os dados para modelagem (*Feature Engineering*)
+
+```{r}
+rec_upsample_dummy <- 
+  recipe(Churn ~ ., data=df1_train) |> 
+  update_role(customerID, new_role="ID") |> # Desconsidera a variável ID na modelagem
+  step_dummy(all_nominal_predictors()) |>   # Transforma variáveis categóricas em dummies
+  themis::step_upsample(Churn)              # Upsampling da classe minoritária do Churn
+```
+
+\
+
+Checa aplicação da receita no dataset de treino.
+
+```{r}
+rec_trained <- 
+  prep(rec_upsample_dummy, training=df1_train, retain=TRUE) |> 
+  juice()
+
+str(rec_trained)
+```
+
+\
+
+Checa balanceamento do Churn.
+
+```{r}
+count(rec_trained, Churn)
+```
+
+
+\
+
+[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
+
+```{r}
+lgreg_spec <- 
+  logistic_reg() |>
+  set_engine("glm") |>
+  set_mode("classification")
+
+set.seed(888)
+lgreg_fit <- 
+  workflow() |>
+  add_model(lgreg_spec) |> 
+  add_recipe(rec_upsample_dummy) |>
+  fit(data=df1_train)
+
+lgreg_fit
+```
+
+
+\
+
+Extrai coeficientes da regressão:
+
+```{r}
+lgreg_coefs <- 
+  tidy(lgreg_fit) |> 
+  mutate(lg_significance = if_else(p.value < 0.05, 
+                                   "Significativo (p.value < 0,05)", 
+                                   "Não significativo (p.value > 0,05)"))
+```
+
+
+
+```{r echo=FALSE}
+lgreg_coefs |> 
+  mutate(estimate_abs = abs(estimate),
+         pct_std.error = std.error/abs(estimate)*100) |>
+  arrange(desc(lg_significance), desc(abs(estimate))) |> 
+  group_by(lg_significance) |> 
+  gt(rowname_col="stub", locale="pt") |> sub_missing() |>
+  gtExtras::gt_plt_bar(estimate_abs, width=20) |> 
+  gtExtras::gt_plt_bar_pct(pct_std.error,scaled=T) |>
+  fmt_number(estimate:statistic, decimals=2) |> 
+  fmt_scientific(p.value) |>
+  tab_options(
+    heading.align="left", heading.title.font.size=pct(100), heading.subtitle.font.size=pct(90),
+    column_labels.font.weight="bold", column_labels.font.size=pct(80),
+    column_labels.text_transform="uppercase", column_labels.background.color="gray95",
+    data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
+    table.font.size=pct(80), source_notes.font.size = pct(70),
+  ) |> 
+  tab_header(title = md("**Estimativa dos coeficientes da regressão logística**"))
+```
+
+
+\
+
+[Etapa 5] Testa projeções do modelo
+
+
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
+
+```{r}
+# Gera um dataset de teste com previsões
+lgreg_test <- augment(lgreg_fit, new_data=df1_test)
+
+# Gera um dataset da matriz de confusão
+df3_conf_matrix <- 
+  conf_mat(lgreg_test, truth=Churn, estimate=.pred_class) |> 
+  tidy() |> 
+  tidyConfMat() |> 
+  mutate(model="LogReg0")
+
+# Grava a curva ROC do modelo
+lgreg_roc_curve <- 
+  lgreg_test |> 
+  roc_curve(truth=Churn, .pred_Churned)
+```
+
+
+\
+
+```{r echo=FALSE, fig.asp=1, fig.width=2}
+plotConfMat(df3_conf_matrix)
+```
+
+\
+
+```{r echo=FALSE, fig.width=3, fig.asp=1}
+autoplot(lgreg_roc_curve, size=1.5) +
+  scale_x_continuous(expand=expansion(mult=c(0,0))) +
+  scale_y_continuous(expand=expansion(mult=c(0,0))) +
+  theme_light(base_size=9) +
+  theme(
+    plot.title = element_text(size=10, colour="gray30", face="bold"),
+    plot.subtitle = element_text(face='italic', colour="gray50", size=9),
+    axis.title = element_text(size=7)
+  ) +
+  labs(title="ROC Curve", 
+       subtitle="Regressão logística",
+       x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
 ```
 
 \
 
 **Qual a acurácia, a precisão, a recall e o f1-score do modelo.?**
 
-```{r}
+Junta resultados de performance em um dataset para comparação entre modelos.
 
+```{r}
+df4_performance <- 
+  lgreg_test |> 
+  performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+  mutate(.estimate = round(.estimate, 4),
+         model="LogReg0")
 ```
+
+
+```{r}
+df4_performance |> 
+  filter(.metric %in% c("accuracy", "precision", "recall", "f_meas", "roc_auc"))
+```
+
+```{r include=FALSE}
+rm(rec_trained); gc()
+```
+
 
 \
 
-## Árvore de Decisão
+### Árvore de Decisão
 
 **Treine um modelo de árvore de decisão para realizar a classificação.**
+
+\
+
+[Etapa 3] Transforma os dados para modelagem (*Feature Engineering*)
+
+```{r}
+rec_upsample <- 
+  recipe(Churn ~ ., data=df1_train) |> 
+  update_role(customerID, new_role="ID") |>  # Desconsidera a variável ID na modelagem
+  themis::step_upsample(Churn)  
+```
+
+
+\
+
+Checa aplicação da receita no dataset de treino.
+
+```{r}
+rec_trained <- 
+  prep(rec_upsample, training=df1_train, retain=TRUE) |> 
+  juice()
+
+str(rec_trained)
+```
+
+
+\
+
+Checa balanceamento do Churn.
+
+
+```{r}
+count(rec_trained, Churn)
+```
+
+
+
+\
+
+[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
 
 ```{r}
 tree_spec <- 
@@ -929,37 +1139,51 @@ tree_spec <-
 tree_fit <- 
   workflow() |>
   add_model(tree_spec) |> 
-  add_recipe(rec_simple) |>
+  add_recipe(rec_upsample) |>
   fit(data=df1_train)
 
 tree_fit
 ```
 
+
 \
 
-```{r}
+Visualiza a árvore de decisão gerada pelo modelo.
+
+```{r dectree, fig.cap="Árvore de decisão gerada pelo modelo de classificação.", out.width=500, fig.align="center"}
 extract_fit_engine(tree_fit) |> 
-  rpart.plot::rpart.plot(yes.text="YES", no.text="NO", roundint=FALSE)
+  rpart.plot::rpart.plot(yes.text="SIM", no.text="NÃO", roundint=FALSE)
 ```
 
 \
 
-Use the model to make predictions on the test set.
+[Etapa 5] Testa projeções do modelo
+
+
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
 
 ```{r}
+# Gera um dataset de teste com previsões:
 tree_test <- augment(tree_fit, new_data=df1_test)
+
+# Gera um dataset da matriz de confusão de cada modelo
+df3_conf_matrix <- 
+  bind_rows(
+    df3_conf_matrix,
+    conf_mat(tree_test, truth=Churn, estimate=.pred_class) |> 
+      tidy() |> 
+      tidyConfMat() |> 
+      mutate(model="DecTree0")
+  )
 ```
 
 
 \
 
 ```{r fig.asp=1, fig.width=2}
-df3_conf_matrix <- conf_mat(tree_test, truth=Churn, estimate=.pred_class) |> 
-  tidy() |> 
-  tidyConfMat() |> 
-  mutate(model="DecTree0")
-
-plotConfMat(df3_conf_matrix)
+df3_conf_matrix |> 
+  filter(model=="DecTree0") |> 
+  plotConfMat() 
 ```
 
 \
@@ -973,7 +1197,13 @@ autoplot(tree_roc_curve, size=1.5) +
   scale_x_continuous(expand=expansion(mult=c(0,0))) +
   scale_y_continuous(expand=expansion(mult=c(0,0))) +
   theme_light(base_size=9) +
-  labs(title="ROC curve of Decision Tree model", 
+  theme(
+    plot.title = element_text(size=10, colour="gray30", face="bold"),
+    plot.subtitle = element_text(face='italic', colour="gray50", size=9),
+    axis.title = element_text(size=7)
+  ) +
+  labs(title="ROC Curve", 
+       subtitle="Decision Tree",
        x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
 ```
 
@@ -981,28 +1211,52 @@ autoplot(tree_roc_curve, size=1.5) +
 
 **Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
 
+Junta resultados de performance em um dataset para comparação entre modelos.
 
 ```{r}
-df4_performance <- tree_test |> 
-    performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
-    mutate(.estimate = round(.estimate, 4),
-           model="DecTree0")
+df4_performance <- 
+  bind_rows(
+    df4_performance,
+    tree_test |> 
+      performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+      mutate(.estimate = round(.estimate, 4),
+             model="DecTree0")
+  )
+```
 
-df4_performance |> filter(.metric %in% c("accuracy", "precision", "recall", "f_meas"))
+
+```{r}
+df4_performance |> 
+  filter(model=="DecTree0") |> 
+  filter(.metric %in% c("accuracy", "precision", "recall", "f_meas", "roc_auc"))
+```
+
+
+```{r include=FALSE}
+rm(rec_trained); gc()
 ```
 
 
 \
 
-## Random Forest
+### Random Forest
 
 **Treine um modelo de random forest para realizar a classificação.**
+
+\
+
+Nota: reutiliza a mesma receita de *feature engineering* da árvore de decisão.
+
+\
+
+[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
+
 
 ```{r}
 rf_spec <- 
   rand_forest(
-    mtry  = 2,  # nr of predictors that will be randomly selected, defaults to sqrt(ncol(x))
-    min_n = 10, # target nr of obs in node to split, defaults to 10/classification and 5/regression
+    mtry  = 2,  # nr de preditores que serão escolhidos aleatoriamente, default = sqrt(ncol(x))
+    min_n = 10, # target nr de obs no nó para split, default = 10 ou 5 para classificação
     trees = 500
   ) |>
   set_engine("ranger", num.threads=parallel::detectCores(), importance="impurity_corrected") |>
@@ -1011,7 +1265,7 @@ rf_spec <-
 set.seed(2021)
 rf_fit <- 
   workflow() |>
-  add_recipe(rec_simple) |>
+  add_recipe(rec_upsample) |> # <== mesma receita da árvore de decisão
   add_model(rf_spec) |>
   fit(df1_train)
 
@@ -1020,6 +1274,10 @@ rf_fit
 
 \
 
+[Etapa 5] Testa projeções do modelo
+
+
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
 
 ```{r}
 rf_test <- augment(rf_fit, new_data=df1_test)
@@ -1027,6 +1285,30 @@ rf_test <- augment(rf_fit, new_data=df1_test)
 
 
 \
+
+Antes de checar performance, vamos verificar a importância das variáveis.
+
+
+```{r rf_vars, echo=FALSE, fig.cap="Importância das variáveis do modelo de Random Forest.", fig.width=6, fig.asp=.6}
+rf_res_features <- ranger::importance(extract_fit_engine(rf_fit)) |> tidy() |> 
+  arrange(desc(x))
+
+rf_res_features |> 
+  mutate(names = fct_reorder(names, x)) |>
+  ggplot(aes(x=x, y=names)) +
+  geom_col(fill="cadetblue") +
+  scale_x_continuous(expand=expansion(mult=c(0,0.1))) +
+  theme(panel.grid.major.y=element_blank()) +
+  labs(title="Importância relativa das variáveis - Random Forest", 
+       subtitle="Baseado no índice Gini ajustado",
+       x="Importance", y=NULL)
+```
+
+\
+
+**Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
+
+
 
 ```{r}
 df3_conf_matrix <- 
@@ -1039,47 +1321,27 @@ df3_conf_matrix <-
 ```
 
 
-```{r fig.asp=1, fig.width=2}
+```{r echo=FALSE, fig.asp=1, fig.width=2}
 plotConfMat(df3_conf_matrix |> filter(model=="RndFor0"))
 ```
 
 \
 
-```{r fig.width=3, fig.asp=1}
+```{r echo=FALSE, fig.width=3, fig.asp=1}
 rf_roc_curve <- rf_test |> 
   roc_curve(truth=Churn, .pred_Churned)
 
-autoplot(rf_roc_curve) +
-  coord_cartesian(xlim = c(0,1), ylim=c(0,1.01), expand = FALSE) +
-  theme_light(base_size=9) +
-  labs(title="ROC curve of Random Forest model", 
-       x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
+suppressMessages(
+  print(
+    autoplot(rf_roc_curve) +
+      coord_cartesian(xlim = c(0,1), ylim=c(0,1.01), expand = FALSE) +
+      theme_light(base_size=9) +
+      labs(title="ROC curve of Random Forest model", 
+           x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
+  )
+)
 ```
-
 \
-
-A seguir vamos verificar a importância das variáveis.
-
-
-```{r fig.width=4, fig.asp=.8}
-rf_res_features <- ranger::importance(extract_fit_engine(rf_fit)) |> tidy() |> 
-  arrange(desc(x))
-
-rf_res_features |> 
-  mutate(names = fct_reorder(names, x)) |>
-  ggplot(aes(x=x, y=names)) +
-  geom_col(fill="cadetblue") +
-  scale_x_continuous(expand=expansion(mult=c(0,0.1))) +
-  theme(panel.grid.major.y=element_blank()) +
-  labs(title="Variable importance of Random Forest model", 
-       subtitle="Based on Gini index adjusted for number of categories",
-       x="Importance", y=NULL)
-```
-
-\
-
-**Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
-
 
 ```{r}
 df4_performance <- 
@@ -1100,29 +1362,197 @@ df4_performance |>
 
 \
 
-## XXX Redes Neurais
+### Redes Neurais
 
 **Treine um modelo de rede neural rasa para realizar a classificação.**
 
+\
+
+[Etapa 3] Transforma os dados para modelagem (*Feature Engineering*)
+
 ```{r}
-# library(nnet, keras)   # Redes Neurais
+rec_upsample_dummy_normalize <- 
+  rec_upsample_dummy |> 
+  step_center(all_predictors()) |> # Centraliza as variáveis para média = 0
+  step_scale(all_predictors())    # Escala as variáveis para desvio padrão = 1
 ```
+
+
+\
+
+Checa aplicação da receita no dataset de treino.
+
+```{r}
+rec_trained <- 
+  prep(rec_upsample_dummy_normalize, training=df1_train, retain=TRUE) |> 
+  juice()
+
+str(rec_trained)
+```
+
+
+\
+
+Checa balanceamento do Churn.
+
+
+```{r}
+count(rec_trained, Churn)
+```
+
+\
+
+[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
+
+
+```{r}
+nn_spec <-
+  mlp(hidden_units=6, epochs=150, penalty=0) |>
+  set_engine("nnet") |>
+  set_mode("classification")
+
+set.seed(2021)
+nn_fit <-
+  workflow() |>
+  add_recipe(rec_upsample_dummy_normalize) |>
+  add_model(nn_spec) |>
+  fit(df1_train)
+
+nn_fit
+```
+
+\
+
+[Etapa 5] Testa projeções do modelo
+
+
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
+
+```{r}
+nn_test <- augment(nn_fit, new_data=df1_test)
+```
+
 
 \
 
 **Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
 
-```{r}
 
+```{r}
+df3_conf_matrix <- 
+  bind_rows(
+    df3_conf_matrix,
+    conf_mat(nn_test, truth=Churn, estimate=.pred_class) |> 
+      tidy() |> tidyConfMat() |> 
+      mutate(model="NNet0")
+  )
+```
+
+
+```{r echo=FALSE, fig.asp=1, fig.width=2}
+plotConfMat(df3_conf_matrix |> filter(model=="NNet0"))
 ```
 
 \
 
-# XXX Melhor modelo
+```{r echo=FALSE, fig.width=3, fig.asp=1}
+nn_roc_curve <- nn_test |> 
+  roc_curve(truth=Churn, .pred_Churned)
+
+suppressMessages(
+  print(
+    autoplot(nn_roc_curve) +
+      coord_cartesian(xlim = c(0,1), ylim=c(0,1.01), expand = FALSE) +
+      theme_light(base_size=9) +
+      labs(title="ROC curve of Neural Network", 
+           x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
+  )
+)
+```
+\
+
+```{r}
+df4_performance <- 
+   bind_rows(
+     df4_performance,
+     nn_test |> 
+       performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+       mutate(.estimate = round(.estimate, 4),
+              model="NNet0")
+   )
+```
+
+
+```{r}
+df4_performance |> 
+  filter(model=="NNet0", .metric %in% c("accuracy", "precision", "recall", "f_meas"))
+```
+
+
+\
+
+
+# Melhor modelo
 
 **Em relação à questão anterior, qual o modelo deveria ser escolhido para uma eventual operação.**
 
-XXXXXXXX
+```{r echo=FALSE, fig.width=6, fig.asp=.3}
+df3_conf_matrix |> 
+  mutate(model = factor(model, levels=c("LogReg0", "DecTree0", "RndFor0", "NNet0"))) |> 
+  plotConfMat()
+```
+
+\
+
+```{r}
+df4_performance |> 
+  mutate(
+    model = factor(model, levels=c("LogReg0", "DecTree0", "RndFor0", "NNet0")),
+    .metric = factor(.metric, levels=c("f_meas", "precision", "recall", 
+                                       "roc_auc", "sensitivity", "specificity",
+                                       "accuracy", "brier_class"))
+  ) |>
+  ggplot(aes(x=model, y=.estimate, group=.metric)) +
+  geom_line(aes(color=.metric), linewidth=.7) + geom_point(aes(color=.metric)) +
+  geom_text(aes(label=scales::number(.estimate, accuracy=.01)), vjust=-1, size=3) +
+  facet_wrap(~.metric, scales="free_y", ncol=3) +
+  scale_y_continuous(expand=expansion(mult=c(0.2,0.25))) +
+  scale_fill_brewer(palette="Set2") +
+  theme(legend.position="none",
+        panel.grid.major=element_blank()) +
+  labs(title="Comparison of model metrics", 
+       x=NULL, y=NULL)
+```
+
+\
+
+```{r fig.width=5, fig.asp=1}
+pltROC <- function(workflow, model_name) {
+  autoplot(workflow) +
+    scale_x_continuous(expand=expansion(mult=c(0,0))) +
+    scale_y_continuous(expand=expansion(mult=c(0,0))) +
+    labs(
+      title=glue::glue(
+        "{model_name} (AUC: {filter(df4_performance, .metric=='roc_auc', model=={model_name})$.estimate})"
+      ), 
+      x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)"
+    )
+}
+
+
+p1 <- pltROC(lgreg_roc_curve, "LogReg0")
+p2 <- pltROC(tree_roc_curve, "DecTree0")
+p3 <- pltROC(rf_roc_curve, "RndFor0")
+p4 <- pltROC(nn_roc_curve, "NNet0")
+
+
+p1 + p2 + p3 + p4 &
+  theme_light(base_size=8) &
+  theme(axis.title = element_text(size=7))
+```
+
+
+
 
 \
 
