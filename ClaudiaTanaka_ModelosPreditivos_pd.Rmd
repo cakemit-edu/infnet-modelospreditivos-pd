@@ -3,10 +3,12 @@ title:  Projeto da Disciplina de Modelos Preditivos
 author: Claudia Tanaka (claudia.tanaka@al.infnet.edu.br)
 date:   "Atualizado em `r format(Sys.time(), '%d/%m/%Y')`"
 
-bookdown::html_document2:
-  toc: yes
-  toc_float: yes
-  fig_caption: yes
+output:
+  html_notebook:
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -210,7 +212,7 @@ Não há lacunas nas variáveis categóricas.
 
 Todos os `customerID` são distintos e, portanto, essa variável tem baixo valor explicativo e não ajudará a informar a distinção entre clientes Churned (cancelados) vs Renewed (mantidos). Manteremos a variável na base para que a empresa possa analisar clientes específicos a partir das análises do modelo, mas ela não será utilizada como variável explicativa na modelagem.
 
-As variáveis dos serviços assinados deveriam ser biárias (sim/não) pois a informação adicional sobre se tem ou não serviço de internet ou de telefone já está contida nas variáveis `PhoneService` e `InternetService`. Torná-las binárias evitará a redundância.
+Algumas variáveis que especificam os tipos de serviços assinados (ex. `StreamingMovies`) são multicategóricas mas deveriam ser binárias. A informação adicional sobre se o cliente tem ou não serviço de internet ou de telefone já está contida nas variáveis `PhoneService` e `InternetService`. Torná-las binárias evita redundância e simplifica o modelo.
 
 Seria interessante incluir uma variável que conta quantos serviços o cliente assina, além de ter todos os serviços assinados como variáveis binárias.
 
@@ -568,7 +570,7 @@ rm(df0)
 
 **(1) Você irá comparar alguns modelos para prever as classes. Descreva como a validação cruzada pode ser usada para comparar modelos de maneira justa. Descreva o procedimento e como uma métrica final é calculada.**
 
-O [Capítulo 10. Resampling for Evaluating Performance](https://www.tmwr.org/resampling#resampling) do livro Tidy Modeling with R ([Kuhn e Silge 2023]()#references) explica os fundamentos da validação cruzada.
+O [Capítulo 10. Resampling for Evaluating Performance](https://www.tmwr.org/resampling#resampling) do livro Tidy Modeling with R ([Kuhn e Silge (2023)](#kuhn2023) explica os fundamentos da validação cruzada.
 
 Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
 
@@ -824,7 +826,7 @@ A resposta na função de regressão logística é o log das probabilidades de u
 
 \
 
-# XXX Modelos de Classificação
+# Modelos de Classificação
 
 **Com a base escolhida:**
 
@@ -832,7 +834,7 @@ A resposta na função de regressão logística é o log das probabilidades de u
 
 **Descreva as etapas necessárias para criar um modelo de classificação eficiente.**
 
-[Kuhn e Silge (2023)](#references) propõem uma descrição do processo genérico de modelagem preditiva que pode ser dividido nos seguintes passos:
+[Kuhn e Silge (2023)](#kuhn2023) propõem uma descrição do processo genérico de modelagem preditiva que pode ser dividido nos seguintes passos:
 
 1.  Definir o objetivo
 2.  Analisar os dados (Exploratory Data Analysis - EDA)
@@ -844,9 +846,9 @@ A resposta na função de regressão logística é o log das probabilidades de u
 \
 **(1) Definir o objetivo**
 
-Esta etapa não está formalmente definida no processo descrito por [Kuhn e Silge (2023)](#references), porém considero que seja extremamente importante destacar que um processo de modelagem se inicie por uma definição do seu objetivo específico. Sem isso, o cientista de dados arrisca se perder nas etapas seguintes – especialmente na análise exploratória dos dados (EDA).
+Esta etapa não está formalmente definida no processo descrito por [Kuhn e Silge (2023)](#kuhn2023), porém considero que seja extremamente importante destacar que um processo de modelagem se inicie por uma definição do seu objetivo específico. Sem isso, o cientista de dados arrisca se perder nas etapas seguintes – especialmente na análise exploratória dos dados (EDA).
 
-É especialmente importante definir se o objetivo da modelagem é fazer previsões ([modelagem preditiva]{.underline}) ou explicar relações causais entre as variáveis ([modelagem explicativa]{.underline}). [Shmueli (2010)](#references) descreve as diferenças entre modelos preditivos e modelos explicativos e suas implicações para o processo de modelagem no artigo "*To Explain or to Predict?*". A depender do objetivo da modelagem, diferentes escolhas podem ser feitas, por exemplo, sobre a seleção das variáveis dependentes ou sobre a avaliação da performance do modelo. Em grandes linhas, as etapas do processo de modelagem podem ser aplicadas tanto à modelagem preditiva quanto explicativa, porém a descrição de cada etapa a seguir é voltada para modelagem preditiva, dado o contexto desta disciplina de Modelos Preditivos.
+É especialmente importante definir se o objetivo da modelagem é fazer previsões ([modelagem preditiva]{.underline}) ou explicar relações causais entre as variáveis ([modelagem explicativa]{.underline}). [Shmueli (2010)](#shmueli2010) descreve as diferenças entre modelos preditivos e modelos explicativos e suas implicações para o processo de modelagem no artigo "*To Explain or to Predict?*". A depender do objetivo da modelagem, diferentes escolhas podem ser feitas, por exemplo, sobre a seleção das variáveis dependentes ou sobre a avaliação da performance do modelo. Em grandes linhas, as etapas do processo de modelagem podem ser aplicadas tanto à modelagem preditiva quanto explicativa, porém a descrição de cada etapa a seguir é voltada para modelagem preditiva, dado o contexto desta disciplina de Modelos Preditivos.
 
 Acredito que possa haver iteração entre a definição do objetivo e o passo seguinte de análise exploratória dos dados (EDA). É possível iniciar-se uma modelagem a partir de um objetivo e alterar ou ajustar o objetivo com base nas descobertas extraídas da análise exploratória de dados. Porém, é importante que os passos seguintes – Feature Engineering, Ajuste e seleção do modelo e Teste das projeções – sejam orientadas pelo objetivo específico predeterminado.
 
@@ -859,7 +861,7 @@ No caso concreto deste projeto, por exemplo, o objetivo é avaliar a propensão 
 
 Assumindo-se que o analista esteja partindo de um conjunto pré-selecionado de dados (i.e., desconsiderando-se etapas de desenho de coleta de dados primários ou experimentos), há um processo iterativo entre avaliação e visualização de dados onde diferentes descobertas levam a mais perguntas e talvez buscas paralelas de dados adicionais para obter maior compreensão sobre o problema.
 
-É comum que esta etapa tome mais tempo do que o restante do processo de modelagem. [Wickham, e Grolemund (2023)](#0) contém uma excelente ilustração do processo geral de análise de dados, reproduzida na figura abaixo. A leitura (*Import*) e a limpeza/preparação (*Tidy*) dos dados são mostradas como as etapas iniciais. As etapas analíticas de transformação, visualização e modelagem descritiva geralmente requerem múltiplas iterações antes que se possa, finalmente apresentar os resultados (*Communicate*).
+É comum que esta etapa tome mais tempo do que o restante do processo de modelagem. [Wickham, e Grolemund (2023)](#wickham2023) contém uma excelente ilustração do processo geral de análise de dados, reproduzida na figura abaixo. A leitura (*Import*) e a limpeza/preparação (*Tidy*) dos dados são mostradas como as etapas iniciais. As etapas analíticas de transformação, visualização e modelagem descritiva geralmente requerem múltiplas iterações antes que se possa, finalmente apresentar os resultados (*Communicate*).
 
 ![Processo típico de análise dos dados (Wickham et al. 2023)](.imgs/DataAnalysisProcess.png){alt="Processo típico de análise dos dados (Wickham et al. 2023)" width="400"}\
 
@@ -1492,7 +1494,7 @@ df4_performance |>
 \
 
 
-# Melhor modelo
+## Melhor modelo
 
 **Em relação à questão anterior, qual o modelo deveria ser escolhido para uma eventual operação.**
 
@@ -1574,26 +1576,37 @@ Processamento de Linguagem Natural (NLP), reconhecimento avançado de imagem e c
 
 \
 
+***
+
 # Referências Bibliográficas {#references}
 
 \
-Bruce, P., Bruce, A. e Gedeck, P. (2020). *"Practical Statistics for Data Scientists".* O’reilly Media, Inc. ISBN-13: 978-1492072911.
+Bruce, P.; Bruce, A.; Gedeck, P. (2020). [*"Practical Statistics for Data Scientists"*]{.underline}. O’reilly Media, Inc. [ISBN-13: 978-1492072911. ]{#bruce2020}
 
 \
-NOT QUOTED: Geisser, S. (1993). *"Predictive Inference: An Introduction".* Chapman and Hall, Londres. DOI: 10.1201/9780203742310. [[online](https://doi.org/10.1201/9780203742310)]
+Kuhn, M.; Silge, J. (2023). [*"Tidy Modeling with R: A Framework for Modeling in the Tidyverse"*]{.underline}. O’reilly Media, Inc. ISBN-13: 978-1492096450. [[online](https://www.tmwr.org/) ]{#kuhn2023}
 
 \
-Kuhn, M. e Silge, J. (2023). *"Tidy Modeling with R: A Framework for Modeling in the Tidyverse".* O’reilly Media, Inc. ISBN-13: 978-1492096450 [[online](https://www.tmwr.org/)]
+Shmueli, G. (2010). [*"To Explain or to Predict?"*]{.underline}. Journal of Statistical Science, Institute of Mathematical Statistics [online] v. 25, n. 3, p. 289–310. DOI: 10.1214/10-STS330. [[online](https://projecteuclid.org/euclid.ss/1294167961) ]{#shmueli2010}
 
 \
-Lange, C. (2024). *"Practical Machine Learning with R, 1st Edition".* Chapman & Hall. ISBN-13: 978-1032434056. [[online](https://www.routledge.com/Practical-Machine-Learning-with-R-Tutorials-and-Case-Studies/Lange/p/book/9781032434056)]
-
-\
-Shmueli, G. (2010). *"To Explain or to Predict?"* Journal of Statistical Science, Institute of Mathematical Statistics [online] v. 25, n. 3, p. 289–310. DOI: 10.1214/10-STS330. [[online](https://projecteuclid.org/euclid.ss/1294167961)]
-
-\
-Wickham, H., Çetinkaya-Rundel, M. e Grolemund, G. (2023). *"R for Data Science, 2nd Edition".* O'Reilly Media, Inc. ISBN-13: 978-1492097365. [[online](https://r4ds.hadley.nz/)]
+Wickham, H.; Çetinkaya-Rundel, M.; Grolemund, G. (2023). [*"R for Data Science, 2nd Edition"*]{.underline}. O'Reilly Media, Inc. ISBN-13: 978-1492097365. [[online](https://r4ds.hadley.nz/) ]{#wickham2023}
 
 \
 
 ------------------------------------------------------------------------
+
+NOT CITED BUT USED: 
+
+\
+Geisser, S. (1993). [*"Predictive Inference: An Introduction"*]{.underline}. Chapman and Hall, Londres. DOI: 10.1201/9780203742310. [[online](https://doi.org/10.1201/9780203742310) ]{#geisser1993}
+
+\
+Kuhn, M.; Johnson, K. (2013). [*"Applied Predictive Modeling"*]{.underline}. Springer. ISBN-13: 978-1461468486. [[online](https://link.springer.com/book/10.1007/978-1-4614-7472-3) ]{#kuhn2013}
+
+\
+Kuhn, M. (2021). [*"Feature Engineering and Selection: A Practical Approach for Predictive Models"*]{.underline}. Chapman and Hall/CRC. ISBN-13: 978-0367530679. [[online](https://www.routledge.com/Feature-Engineering-and-Selection-A-Practical-Approach-for-Predictive-Models/Kuhn/p/book/9780367530679) ]{#kuhn2021}
+
+\
+Lange, C. (2024). [*"Practical Machine Learning with R, 1st Edition"*]{.underline}. Chapman & Hall. ISBN-13: 978-1032434056. [[online](https://www.routledge.com/Practical-Machine-Learning-with-R-Tutorials-and-Case-Studies/Lange/p/book/9781032434056) ]{#lange2024}
+
