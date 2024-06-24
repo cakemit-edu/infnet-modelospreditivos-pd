@@ -4,11 +4,10 @@ author: Claudia Tanaka (claudia.tanaka@al.infnet.edu.br)
 date:   "Atualizado em `r format(Sys.time(), '%d/%m/%Y')`"
 
 output:
-  html_notebook:
+  bookdown::html_document2:
     toc: yes
-    toc_depth: 4
     toc_float: yes
-    code_folding: hide
+    fig_caption: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -72,7 +71,7 @@ plotConfMat <- function(df) {
     scale_y_continuous(expand=expansion(mult=c(0,0)), breaks=NULL) +
     theme(legend.position = "none") +
     scale_fill_identity() +
-    labs(title = "Confusion matrix", 
+    labs(title = "Matriz de confusão", 
          x="TRUTH", y="PREDICTION")
 }
 ```
@@ -103,7 +102,7 @@ print(sessionInfo(), locale=FALSE)
 
 \
 
-# Base escolhida
+# Base escolhida {#objetivo}
 
 **Explique a motivação de uso da base escolhida.**
 
@@ -264,14 +263,10 @@ str(df1)
 
 \
 
-## EDA
+## EDA {#eda}
 
-::: {.alert .alert-danger}
--   Outliers?\
--   Categorização das variáveis numéricas?\
--   Correlações entre as variáveis?\
--   Hipóteses sobre as variáveis mais explicativas?\
-:::
+
+Realiza uma análise explotratória dos dados (EDA) para entender melhor as variáveis e suas relações com a variável target `Churn`.
 
 \
 
@@ -306,7 +301,7 @@ A proporção de `Churn` nas variáveis demográficas leva a crer que a variáve
 
 Clientes que são `SeniorCitizens`, clientes que não têm parceiros e clientes sem dependentes parecem ter maior propensão ao cancelamento.
 
-```{r bidemog, echo=FALSE, fig.width=4, fig.height=4, fig.cap="*Gráfico das variáveis demográficas versus Churn.*"}
+```{r demog, echo=FALSE, fig.width=4, fig.height=4, fig.cap="*Gráfico das variáveis demográficas versus Churn.*"}
 df1 |> 
   select(Gender:Dependents, Churn) |> 
   ggbivariate(
@@ -376,7 +371,7 @@ A contratação de serviços de `PhoneService` e talvez `MultipleLines` parece t
 
 Já a contratação de `InternetService` parece ser uma variável mais relevante para explicar a propensão ao cancelamento. Clientes com serviços de internet - seja DSL ou fibra ótica - são significamente mais propensos ao cancelamento.
 
-```{r chrnServices, echo=FALSE, fig.asp=.9, fig.width=4, fig.cap="*Gráfico das variáveis de serviços assinados versus Churn.*"}
+```{r services, echo=FALSE, fig.asp=.9, fig.width=4, fig.cap="*Gráfico das variáveis de serviços assinados versus Churn.*"}
 ggbivariate(df1 |> select(PhoneService:InternetService, Churn), 
             outcome="Churn", 
             rowbar_args = list(colour = "white",
@@ -392,7 +387,9 @@ ggbivariate(df1 |> select(PhoneService:InternetService, Churn),
 
 \
 
-Clientes com serviços de internet que não contratam serviços adicionais parecem ter maior propensão ao cancelamento exceto quando o serviço adicional é `StreamingTV` ou `StreamingMovies`.
+Clientes com serviços de internet que não contratam serviços adicionais parecem ter maior propensão ao cancelamento (exceto quando o serviço adicional é `StreamingTV` ou `StreamingMovies`). 
+
+Porém, a diferença na propensão ao cancelamento entre clientes com ou sem cada um desses serviços é sutil, exceto no caso de `OnlineSecurity` e `TechSupport`.
 
 ```{r chrnInternet, echo=FALSE, fig.asp=1.3, fig.width=4, fig.cap="*Gráfico das variáveis de serviços de internet assinados versus Churn.*"}
 ggbivariate(df1 |> select(OnlineSecurity:StreamingMovies, Churn), 
@@ -407,6 +404,8 @@ ggbivariate(df1 |> select(OnlineSecurity:StreamingMovies, Churn),
   scale_color_brewer(palette="Set1") +
   labs(subtitle=glue::glue("n = {nrow(df1)}"))
 ```
+
+\
 
 É interessante notar com relação aos serviços contratados que a base de dados já está estruturada como se cada serviço fosse uma variável binária (sim/não). Portanto, não é necessário fazer a transformação de variáveis categóricas em numéricas usando variáveis *dummy* ou *one-hot-encoding*.
 
@@ -451,7 +450,7 @@ Clientes que dispensaram o recebimento de faturas em papel são mais propensos a
 
 Em `PaymentMethod`, clientes que adotam pagamento por cheque eletrônico são os mais propensos ao cancelamento. A proporção de clientes cancelados com pagamento automático via cartão de crédito ou transferência bancária é muito similar. Seria interessante conversar com a equipe de negócios para checar se há relevância nas diferenças entre esses dois tipos de pagamento para o cancelamento de clientes e verificar se faria sentido juntar esses clientes em uma classe única de pagamentos automáticos, caso isso traga benefícios para a performance do modelo em produção.
 
-```{r chrnAccount, echo=FALSE, fig.asp=1.5, fig.width=5, fig.cap="*Gráfico das variáveis de informações da conta versus Churn.*"}
+```{r account, echo=FALSE, fig.asp=1.5, fig.width=5, fig.cap="*Gráfico das variáveis de informações da conta versus Churn.*"}
 ggbivariate(df1 |> select(c(Contract:TotalCharges, Tenure), Churn), 
             outcome="Churn", 
             rowbar_args = list(colour = "white",
@@ -464,6 +463,8 @@ ggbivariate(df1 |> select(c(Contract:TotalCharges, Tenure), Churn),
   scale_color_brewer(palette="Set1") +
   labs(subtitle=glue::glue("n = {nrow(df1)}"))
 ```
+
+\
 
 O boxplot aponta concentrações diferentes em relação ao `Churn` para as três variáveis numéricas `MonthlyCharges`, `TotalCharges` e `Tenure`. A faixa de valores entre mínimo e máximo de cada variável é similar para clientes cancelados (`Churned`) e clientes retidos (`Renewed`). Nas três variáveis os clientes cancelados aparentam ter uma distribuição mais concentrada em um intervalo menor que clientes retidos.
 
@@ -572,13 +573,13 @@ rm(df0)
 
 O [Capítulo 10. Resampling for Evaluating Performance](https://www.tmwr.org/resampling#resampling) do livro Tidy Modeling with R ([Kuhn e Silge (2023)](#kuhn2023) explica os fundamentos da validação cruzada.
 
-Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos "*black-box*" (de difícil interpretação, como redes neurais, random forest) têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados.
+Algumas técnicas de modelagem (como regressão linear/logística, análise discriminante e outros) são considerados modelos de alto viés pois não são altamente adaptáveis aos tipos de padrões que podem ser encontrados nos dados. Porém muitos modelos como redes neurais, random forest, têm baixo viés, o que significa que podem reproduzir relacionamentos altamente complexos de vários tipos de padrões encontrados em um conjunto de dados. Isso pode resultar no modelo reproduzir quase exatamente os padrões (incluindo ruídos) encontrados do conjunto de treino e ter baixa performance quando fizer previsão sobre novas observações. Um modelo de baixo viés treinado em certo conjunto de dados fornecerá previsões otimistas para estes dados de treino, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. 
 
-Para um modelo de baixo viés, o alto grau de capacidade preditiva pode resultar no modelo reproduzir quase exatamente os dados do conjunto de treino. Um modelo de baixo viés treinado em certo conjunto de dados sempre fornecerá previsões perfeitas para estes dados de treino, mas pode não funcionar tão bem para novas observações. Isso é conhecido como *overfitting*. Testar as projeções no próprio conjunto de treino sempre resulta em uma estimativa artificialmente otimista de performance e aumenta as chances que o modelo não tenha uma boa performance em novas observações.
+Assim, para comparar a performance entre modelos de maneira justa é necessário avaliar o desempenho de cada modelo com os dados de treinamento antes de escolher o modelo final que será testado sobre os dados separados para especificamente para teste. 
 
-Uma solução popular para evitar a precisão superotimista das projeções (*overfitting*) é avaliar o desempenho não nos dados usados para construir o modelo, mas sim em uma amostra dos dados reservada à parte à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados em subconjunto de treino e subconjunto de teste.
+Uma solução popular para particionamento justo dos dados é avaliar o desempenho em uma amostra dos dados reservada à qual o modelo não seja exposto durante sua construção – ou seja, uma separação dos dados de treino em subconjunto de "análise" e subconjunto de "validação".
 
-A criação de uma amostra reservada pode ser obtida de várias maneiras, a mais comumente usada sendo a partição aleatória da amostra em conjuntos de treino e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treino e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
+O particionamento pode ser feito de várias maneiras, a mais comum sendo a partição aleatória da amostra em subconjuntos de análise e teste por métodos de reamostragem. Métodos de reamostragem são sistemas de simulação empírica que emulam o processo de usar alguns dados para treino e dados diferentes para teste. A maioria dos métodos de reamostragem são iterativos, o que significa que esse processo é repetido várias vezes. O diagrama na Figura a seguir ilustra como os métodos de reamostragem geralmente operam.
 
 ![Figura 4.1 Esquema de particionamento de dados com reamostragem (Khun e Silge 2023).](.imgs/Resampling.png){#fig4-1 width="500"}
 
@@ -587,9 +588,9 @@ A reamostragem é feita somente no conjunto de treino, como se vê na Figura [4.
 
 -   O modelo é treinado com o dataset de [análise]{.underline} (*Analysis*)
 
--   O modelo é avaliado sobre o dataset de [avaliação]{.underline} (*Assessment*)
+-   O modelo é avaliado sobre o dataset de [validação]{.underline} (*Assessment*)
 
-Essas duas sub-amostras são análogas aos conjuntos de treino e teste. A terminologia de [análise]{.underline} e [avaliação]{.underline} visa evitar confusão com a divisão inicial dos dados em treino e teste. Esses conjuntos de reamostragem (resample 1, resample 2, ...) são mutuamente exclusivos. O esquema de particionamento usado para criar os conjuntos de análise e avaliação é geralmente a característica definidora do método de reamostragem.
+Essas duas sub-amostras são análogas aos conjuntos de treino e teste. A terminologia de [análise]{.underline} e [validação]{.underline} visa evitar confusão com a divisão inicial dos dados em treino e teste. Esses conjuntos de reamostragem (resample 1, resample 2, ...) são mutuamente exclusivos. O esquema de particionamento usado para criar os conjuntos de análise e avaliação é geralmente a característica definidora do método de reamostragem.
 
 Suponha que sejam feitas 20 iterações de reamostragem. Isso significa que 20 modelos separados são ajustados nos conjuntos de análise e os conjuntos de avaliação correspondentes produzem 20 conjuntos de estatísticas de desempenho. A estimativa final de desempenho para o modelo seria a média das 20 estatísticas de desempenho. Essa média tem potencial de generalização muito alto e é muito superior a estimativas feitas sem particionamento dos dados.
 
@@ -617,7 +618,7 @@ Há também outras técnicas de reamostragem, como ["bootstrapping"]{.underline}
 
 \
 
-## Balanceamento de classes
+## Balanceamento de classes {#split}
 
 **(2) A base se encontra com as classes balanceadas? Cite uma maneira resolver no caso das classes estarem desbalanceadas.**
 
@@ -830,21 +831,22 @@ A resposta na função de regressão logística é o log das probabilidades de u
 
 **Com a base escolhida:**
 
-## Etapas de modelagem
+## Etapas de modelagem {#etapas}
 
 **Descreva as etapas necessárias para criar um modelo de classificação eficiente.**
 
 [Kuhn e Silge (2023)](#kuhn2023) propõem uma descrição do processo genérico de modelagem preditiva que pode ser dividido nos seguintes passos:
 
 1.  Definir o objetivo
-2.  Analisar os dados (Exploratory Data Analysis - EDA)
-3.  Transformar os dados para modelagem (*Feature Engineering*)
-4.  Ajustar e selecionar modelo
-5.  Testar projeções no modelo selecionado
-6.  Documentar e comunicar conclusões
+2.  Analisar os dados (*Exploratory Data Analysis - EDA*)
+3.  Preprocessamento dos dados
+4.  Transformar os dados para modelagem (*Feature Engineering*)
+5.  Ajustar e selecionar modelo
+6.  Testar projeções no modelo selecionado
+7.  Documentar e comunicar conclusões
 
 \
-**(1) Definir o objetivo**
+### Definir o objetivo
 
 Esta etapa não está formalmente definida no processo descrito por [Kuhn e Silge (2023)](#kuhn2023), porém considero que seja extremamente importante destacar que um processo de modelagem se inicie por uma definição do seu objetivo específico. Sem isso, o cientista de dados arrisca se perder nas etapas seguintes – especialmente na análise exploratória dos dados (EDA).
 
@@ -857,13 +859,17 @@ A definição do objetivo deve especificar qual pergunta ou perguntas serão res
 No caso concreto deste projeto, por exemplo, o objetivo é avaliar a propensão ou risco de rotatividade dos clientes de uma empresa de telecomunicações. O projeto fará uma modelagem para classificação dos clientes entre contratos cancelados ou não cancelados, gerando um modelo final que ajudará a empresa a identificar clientes altamente propensos ao cancelamento de forma que sua área comercial possa atuar especificamente sobre estes clientes. Adicionalmente, gostaríamos de poder reportar a importância relativa das variáveis explicativas do modelo final para identificar os fatores mais influenciadores do risco de cancelamento do cliente.
 
 \
-**(2) Analisar os dados (EDA)**
+### Analisar os dados (EDA)
 
 Assumindo-se que o analista esteja partindo de um conjunto pré-selecionado de dados (i.e., desconsiderando-se etapas de desenho de coleta de dados primários ou experimentos), há um processo iterativo entre avaliação e visualização de dados onde diferentes descobertas levam a mais perguntas e talvez buscas paralelas de dados adicionais para obter maior compreensão sobre o problema.
 
 É comum que esta etapa tome mais tempo do que o restante do processo de modelagem. [Wickham, e Grolemund (2023)](#wickham2023) contém uma excelente ilustração do processo geral de análise de dados, reproduzida na figura abaixo. A leitura (*Import*) e a limpeza/preparação (*Tidy*) dos dados são mostradas como as etapas iniciais. As etapas analíticas de transformação, visualização e modelagem descritiva geralmente requerem múltiplas iterações antes que se possa, finalmente apresentar os resultados (*Communicate*).
 
-![Processo típico de análise dos dados (Wickham et al. 2023)](.imgs/DataAnalysisProcess.png){alt="Processo típico de análise dos dados (Wickham et al. 2023)" width="400"}\
+```{r processo, echo=FALSE, fig.cap="Processo típico de análise dos dados (Wickham et al. 2023)", out.width=300}
+knitr::include_graphics(".imgs/DataAnalysisProcess.png")
+```
+
+\
 
 Deve-se sempre investigar os dados para garantir que eles sejam precisos, adequados e aplicáveis ao objetivo específico da modelagem. A análise exploratória de dados (EDA) pode trazer à tona como as diferentes variáveis estão relacionadas entre si, suas distribuições, intervalos típicos e outros atributos.
 
@@ -873,24 +879,32 @@ Outra boa pergunta a ser respondida nessa etapa é se os dados são relevantes p
 
 Nesta etapa é possível, inclusive, aplicar técnicas de modelagem especificamente para esclarecer a relação entre as variáveis e descobrir a melhor maneira de representar essa relação dentro do modelo preditivo, como por exemplo *Locally Estimated Scatterplot Smoothing* – LOESS.
 
-A etapa de análise de dados, deve estabelecer qual técnica ou técnicas de modelagem serão aplicadas (Regressão Logística, Decision Tree, Random Forest, Redes Neurais, etc. ou mesmo um "*ensemble*" de diferentes técnicas?) para atingir o objetivo determinado.
+Assim, a EDA pode ajudar a formar hipóteses sobre a escolha das variáveis a serem usadas no modelo, a escolha das técnicas de modelagem a serem testadas (Regressão Logística, Decision Tree, Random Forest, Redes Neurais, etc.), escolhas sobre como os dados devem ser transformados para a modelagem (*feature engineering*) para atingir o objetivo predeterminado.
+
+Essa etapa também pode ajudar na limpeza dos dados, incluindo escolhas sobre como lidar com observações duplicadas, valores faltantes, outliers, multicolinearidade entre as variáveis. 
 
 E finalmente, deve-se definir expectativas claras de como o desempenho (e o sucesso) da modelagem serão avaliados. Pelo menos uma métrica de desempenho deve ser identificada com objetivos realistas do que pode ser alcançado. Os benefícios e desvantagens relativos dessas métricas devem ser ponderados. Também é importante que a métrica seja pertinente – seu alinhamento com os objetivos da análise de dados é crítico.
 
-Nessa etapa também deve-se definir a estratégia de particionamento dos dados a ser adotada para a validação do modelo. Os dados serão separados em treino e teste? Se sim, é recomendável que as análises exploratórias sejam feitas sobre o conjunto de dados de treino, isolando os dados de teste desde o início da modelagem. Será aplicada alguma metodologia de reamostragem? Como mencionado na pergunta [4.1 Validação cruzada](#validacao-cruzada), pode-se escolher algum tipo de validação cruzada, além de outras metodologias desenhadas para mitigar problemas específicos de tamanho ou distribuição dos dados da amostra de treino, como *bootstrapping*.
+Como demonstrado na Figura \@ref(fig:processo), a análise de dados é um processo iterativo. A EDA pode levar a mais perguntas e a mais exploração de dados. A análise de dados é um processo de descoberta e aprendizado.
 
 \
-**(3) Feature Engineering**
+### Preprocessamento
 
-Os insights de EDA e as decisões tomadas naquela etapa auxiliarão na criação de termos ou componentes de modelo específicos para a modelagem dos dados observados. A transformação dos dados pode incluir metodologias complexas (por exemplo, *Principal Component Analysis - PCA*) ou recursos mais simples (combinando uma medida de altura e outra de largura em uma nova variável da área).
+Nessa etapa deve-se definir a estratégia de particionamento dos dados a ser adotada para a validação do modelo. Os dados serão separados em treino e teste? Será aplicada alguma metodologia de reamostragem? Como mencionado na pergunta [4.1 Validação cruzada](#validacao-cruzada), pode-se escolher algum tipo de validação cruzada, além de outras metodologias desenhadas para mitigar o *overfitting* e eventuais problemas específicos de tamanho ou distribuição dos dados da amostra de treino.
+
 
 \
-**(4) Ajustar e selecionar modelo(s)**
+### Feature Engineering
+
+Os *insights* de EDA e as decisões tomadas naquela etapa auxiliarão na criação de termos ou componentes de modelo específicos para a modelagem dos dados observados. A transformação dos dados pode incluir metodologias complexas (por exemplo, *Principal Component Analysis - PCA*) ou recursos mais simples (combinando uma medida de altura e outra de largura em uma nova variável da área).
+
+\
+### Ajustar e selecionar modelo(s)
 
 Nessa etapa os modelos são gerados e seu desempenho é comparado. Alguns modelos exigem ajuste de parâmetros em que alguns parâmetros estruturais devem ser especificados ou otimizados.
 
 \
-**(5) Testar projeções**
+### Testar projeções
 
 Durante esta fase, as métricas de desempenho do modelo são avaliadas examinando o resíduo ou erro de projeção no conjunto de dados separado para teste. Podem ser feitas outras análises complementares para entender o quão bem o(s) modelo(s) funciona(m).
 
@@ -898,23 +912,25 @@ Durante esta fase, as métricas de desempenho do modelo são avaliadas examinand
 O processo de modelagem é iterativo. Após uma execução inicial dessa sequência de passos, mais entendimento é obtido sobre quais modelos são superiores, bem como quais sub-amostras de dados não estão sendo estimadas efetivamente. Isso leva a EDA adicional e feature engineering, outra rodada de modelagem e assim por diante.
 
 \
-**(6) Documentar e comunicar conclusões**
+### Documentar e comunicar conclusões
 
 Quando os objetivos originais da modelagem são alcançadas, normalmente as últimas etapas são finalizar, documentar e comunicar o modelo.
 
 
-## Modelagem
+
+## Modelos
 
 \
 
-Escolhe as métricas de classificação e de probabilidade para avaliar a performance de **todos** os modelos.
+Após a etapa de [definição do objetivo](#objetivo), [análise exploratória dos dados](#eda) e particionamento dos dados para [treino e teste](#split), a seguir escolhemos as métricas de performance para comparar os modelos entre si.
 
 ```{r}
 performance_metrics <- 
-  metric_set(accuracy, 
-             roc_auc, sensitivity, specificity,
-             f_meas, precision, recall, # <== f_meas = F1-score
-             brier_class)
+  metric_set(
+    accuracy, 
+    roc_auc, recall, specificity,
+    f_meas, precision, # <== f_meas = F1-score
+  )
 ```
 
 \
@@ -925,7 +941,7 @@ performance_metrics <-
 
 \
 
-[Etapa 3] Transforma os dados para modelagem (*Feature Engineering*)
+*Feature Engineering* transforma os dados para modelagem ([etapa 4](#etapas))
 
 ```{r}
 rec_upsample_dummy <- 
@@ -956,9 +972,14 @@ count(rec_trained, Churn)
 ```
 
 
+```{r include=FALSE}
+rm(rec_trained); gc()
+```
+
+
 \
 
-[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
+Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo ([etapa 5](#etapas)).
 
 ```{r}
 lgreg_spec <- 
@@ -979,50 +1000,22 @@ lgreg_fit
 
 \
 
-Extrai coeficientes da regressão:
-
-```{r}
-lgreg_coefs <- 
-  tidy(lgreg_fit) |> 
-  mutate(lg_significance = if_else(p.value < 0.05, 
-                                   "Significativo (p.value < 0,05)", 
-                                   "Não significativo (p.value > 0,05)"))
-```
-
-
-
-```{r echo=FALSE}
-lgreg_coefs |> 
-  mutate(estimate_abs = abs(estimate),
-         pct_std.error = std.error/abs(estimate)*100) |>
-  arrange(desc(lg_significance), desc(abs(estimate))) |> 
-  group_by(lg_significance) |> 
-  gt(rowname_col="stub", locale="pt") |> sub_missing() |>
-  gtExtras::gt_plt_bar(estimate_abs, width=20) |> 
-  gtExtras::gt_plt_bar_pct(pct_std.error,scaled=T) |>
-  fmt_number(estimate:statistic, decimals=2) |> 
-  fmt_scientific(p.value) |>
-  tab_options(
-    heading.align="left", heading.title.font.size=pct(100), heading.subtitle.font.size=pct(90),
-    column_labels.font.weight="bold", column_labels.font.size=pct(80),
-    column_labels.text_transform="uppercase", column_labels.background.color="gray95",
-    data_row.padding=px(2), row_group.padding=px(2), row_group.font.weight="bold",
-    table.font.size=pct(80), source_notes.font.size = pct(70),
-  ) |> 
-  tab_header(title = md("**Estimativa dos coeficientes da regressão logística**"))
-```
-
+**Qual a acurácia, a precisão, a recall e o f1-score do modelo.?**
 
 \
 
-[Etapa 5] Testa projeções do modelo
-
-
-Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo. ([etapa 6](#etapas))
 
 ```{r}
 # Gera um dataset de teste com previsões
 lgreg_test <- augment(lgreg_fit, new_data=df1_test)
+
+# Junta resultados de performance em um dataset para comparação entre modelos.
+df4_performance <- 
+  lgreg_test |> 
+  performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+  mutate(.estimate = round(.estimate, 4),
+         model="LogReg0")
 
 # Gera um dataset da matriz de confusão
 df3_conf_matrix <- 
@@ -1032,59 +1025,66 @@ df3_conf_matrix <-
   mutate(model="LogReg0")
 
 # Grava a curva ROC do modelo
-lgreg_roc_curve <- 
-  lgreg_test |> 
-  roc_curve(truth=Churn, .pred_Churned)
+lgreg_res_roc_curve <- roc_curve(lgreg_test, truth=Churn, .pred_Churned)
+
+# Extrai coeficientes de regressão
+lgreg_res_coefs <- 
+  tidy(lgreg_fit) |> 
+  mutate(
+    lg_significance = p.value < 0.05,
+    lim.inf = estimate - qt(p=.95/2, df=nrow(df1_train)-1, lower.tail=F) * std.error,
+    lim.sup = estimate + qt(p=.95/2, df=nrow(df1_train)-1, lower.tail=F) * std.error
+  )
 ```
 
 
 \
 
-```{r echo=FALSE, fig.asp=1, fig.width=2}
-plotConfMat(df3_conf_matrix)
+Reservaremos a análise dos resultados para a [pergunta seguinte](#resultados) que fára a comparação entre todos os modelos. Por ora, apenas ressaltamos que a acurácia do modelo de regressão logística está razoável e o `roc_auc` parece indicar um balanceamento aceitável entre as taxas de acerto de positivos e negativos.
+
+
+```{r echo=FALSE}
+df4_performance
+```
+
+
+\
+
+Coeficientes da regressão: Uma vantagem do modelo de regressão logística é que os coeficientes estimados podem ser interpretados diretamente como a relação (linear, nesse caso) entre as variáveis explicativas e a probabilidade de ocorrência do evento na variável de saída. 
+
+A seguir, apresentamos os coeficientes estimados e seus intervalos de confiança.
+
+```{r lgreg_res_coefs, echo=FALSE, fig.cap="Estimativa dos coeficientes das variáveis preditoras da regressão logística ordenados de acordo com a significância e magnitude.", fig.width=6, fig.asp=1}
+lgreg_res_coefs |> 
+  filter(term != "(Intercept)") |>
+  arrange(desc(lg_significance), desc(abs(estimate))) |> 
+  mutate(id = row_number(),
+         term = fct_reorder(term, -id),
+         lg_significance = factor(lg_significance, labels=c("p < 0.05", "p > 0.05"))) |> 
+  ggplot(aes(y=term, x=estimate, fill=lg_significance)) +
+  geom_col() +
+  geom_errorbar(aes(xmin=lim.inf, xmax=lim.sup), width=.2, color="darkgrey") +
+  scale_fill_brewer(palette="Set2", direction=-1) +
+  labs(title="Estimativa dos coeficientes da regressão logística",
+       subtitle="Ordenados por significância (0,05) e magnitude",
+       x="Estimativa", y=NULL)
 ```
 
 \
 
-```{r echo=FALSE, fig.width=3, fig.asp=1}
-autoplot(lgreg_roc_curve, size=1.5) +
-  scale_x_continuous(expand=expansion(mult=c(0,0))) +
-  scale_y_continuous(expand=expansion(mult=c(0,0))) +
-  theme_light(base_size=9) +
-  theme(
-    plot.title = element_text(size=10, colour="gray30", face="bold"),
-    plot.subtitle = element_text(face='italic', colour="gray50", size=9),
-    axis.title = element_text(size=7)
-  ) +
-  labs(title="ROC Curve", 
-       subtitle="Regressão logística",
-       x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
-```
+Na análise exploratória, havíamos levantado as hipóteses de que as seguintes variáveis poderiam ser candidatas a ser indicadoras da propensão ao cancelamento:
 
-\
+* `SeniorCitizen` (vide  Figura \@ref(fig:demog)),
+* `InternetService`, `OnlineSecurity` e `TechSupport` (vide Figura \@ref(fig:services)),
+* `Contract` (tipo de contrato), `PaperlessBilling`, `PaymentMethod` e `Tenure` (vide \@ref(fig:account))
 
-**Qual a acurácia, a precisão, a recall e o f1-score do modelo.?**
+Olhando a Figura \@ref(fig:lgreg_res_coefs), não ter serviços de internet contratados aparece como a maior indicadora de aumento da propensão ao cancelamento enquanto ter fibra ótica (também da variável `InternetService`) parece estar associado a redução da propensão ao cancelamento, embora eu inicialmente achasse que a direção da influência seria oposta pelos gráficos de proporção da Figura \@ref(fig:services). 
 
-Junta resultados de performance em um dataset para comparação entre modelos.
+Assim, o modelo parece confirmar nossas suspeitas em relação a `InternetService`, `OnlineSecurity`, `TechSupport`, `Contract` enquanto as variáveis `SeniorCitizen`, `PaperlessBilling`, `PaymentMethod` e `Tenure` não parecem ter tanta influência na propensão ao cancelamento quanto eu imaginava inicialmente.
 
-```{r}
-df4_performance <- 
-  lgreg_test |> 
-  performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
-  mutate(.estimate = round(.estimate, 4),
-         model="LogReg0")
-```
+O modelo também encontrou valor informativo na variável preditora `n.internet` que contabiliza a quantidade de serviços adicionais de internet contratados pelo cliente. 
 
-
-```{r}
-df4_performance |> 
-  filter(.metric %in% c("accuracy", "precision", "recall", "f_meas", "roc_auc"))
-```
-
-```{r include=FALSE}
-rm(rec_trained); gc()
-```
-
+Talvez seja interessante investigar a interação entre as variáveis `n.internet` e as variáveis dummy de cada um dos serviços de internet contratados pois, especialmente no caso das variáveis com coeficientes de menor magnitude (`StreamingTV`, `OnlineBackup`, `DeviceProtection`) talvez haja alguma redundância ou efeito de multicolinearidade.
 
 \
 
@@ -1094,7 +1094,8 @@ rm(rec_trained); gc()
 
 \
 
-[Etapa 3] Transforma os dados para modelagem (*Feature Engineering*)
+*Feature Engineering* transforma os dados para modelagem ([etapa 4](#etapas))
+
 
 ```{r}
 rec_upsample <- 
@@ -1128,9 +1129,15 @@ count(rec_trained, Churn)
 
 
 
+```{r include=FALSE}
+rm(rec_trained); gc()
+```
+
+
 \
 
-[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
+Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo ([etapa 5](#etapas)).
+
 
 ```{r}
 tree_spec <- 
@@ -1150,23 +1157,26 @@ tree_fit
 
 \
 
-Visualiza a árvore de decisão gerada pelo modelo.
-
-```{r dectree, fig.cap="Árvore de decisão gerada pelo modelo de classificação.", out.width=500, fig.align="center"}
-extract_fit_engine(tree_fit) |> 
-  rpart.plot::rpart.plot(yes.text="SIM", no.text="NÃO", roundint=FALSE)
-```
+**Qual a acurácia, a precisão, a recall e o f1-score do modelo.?**
 
 \
 
-[Etapa 5] Testa projeções do modelo
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo. ([etapa 6](#etapas))
 
-
-Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
 
 ```{r}
 # Gera um dataset de teste com previsões:
 tree_test <- augment(tree_fit, new_data=df1_test)
+
+# Junta resultados de performance em um dataset para comparação entre modelos.
+df4_performance <- 
+  bind_rows(
+    df4_performance,
+    tree_test |> 
+      performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+      mutate(.estimate = round(.estimate, 4),
+             model="DecTree0")
+  )
 
 # Gera um dataset da matriz de confusão de cada modelo
 df3_conf_matrix <- 
@@ -1177,66 +1187,32 @@ df3_conf_matrix <-
       tidyConfMat() |> 
       mutate(model="DecTree0")
   )
+
+# Grava a curva ROC do modelo
+tree_roc_curve <- roc_curve(tree_test, truth=Churn, .pred_Churned)
 ```
 
 
 \
 
-```{r fig.asp=1, fig.width=2}
-df3_conf_matrix |> 
-  filter(model=="DecTree0") |> 
-  plotConfMat() 
-```
-
-\
-
-```{r fig.width=3, fig.asp=1}
-tree_roc_curve <- 
-  tree_test |> 
-  roc_curve(truth=Churn, .pred_Churned)
-
-autoplot(tree_roc_curve, size=1.5) +
-  scale_x_continuous(expand=expansion(mult=c(0,0))) +
-  scale_y_continuous(expand=expansion(mult=c(0,0))) +
-  theme_light(base_size=9) +
-  theme(
-    plot.title = element_text(size=10, colour="gray30", face="bold"),
-    plot.subtitle = element_text(face='italic', colour="gray50", size=9),
-    axis.title = element_text(size=7)
-  ) +
-  labs(title="ROC Curve", 
-       subtitle="Decision Tree",
-       x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
-```
-
-\
-
-**Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
-
-Junta resultados de performance em um dataset para comparação entre modelos.
+Reservaremos a análise dos resultados para a [pergunta seguinte](#resultados) que fára a comparação entre todos os modelos. Por ora, apenas ressaltamos que a acurácia da Árvore de Decisão está razoável e o `roc_auc` parece indicar pequeno balanceamento entre as taxas de acerto de positivos e negativos.
 
 ```{r}
-df4_performance <- 
-  bind_rows(
-    df4_performance,
-    tree_test |> 
-      performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
-      mutate(.estimate = round(.estimate, 4),
-             model="DecTree0")
-  )
+df4_performance |> filter(model=="DecTree0")
 ```
 
+\
 
-```{r}
-df4_performance |> 
-  filter(model=="DecTree0") |> 
-  filter(.metric %in% c("accuracy", "precision", "recall", "f_meas", "roc_auc"))
+Visualiza a árvore de decisão gerada pelo modelo.
+
+```{r dectree, fig.cap="Árvore de decisão gerada pelo modelo de classificação.", out.width=300, fig.align="center"}
+extract_fit_engine(tree_fit) |> 
+  rpart.plot::rpart.plot(yes.text="SIM", no.text="NÃO", roundint=FALSE)
 ```
 
+Apesar de ser um modelo muito instável por ser muito sensível a pequenas alterações dos dados de treino, vale notar que a Árvore de Decisão, assim como a Regressão Logística, identificou a contratação de fibra ótica como um dos indicadores de propensão ao cancelamento. Por outro lado, as variáveis `Contract` sendo renovado mensalmente e quantidade de meses da assinatura (`Tenure`) não apareceram entre as mais relevantes na Regressão Logística. 
 
-```{r include=FALSE}
-rm(rec_trained); gc()
-```
+No caso de `Tenure` talvez faça sentido experimentar rodar a Regressão Logística com uma categorização da quantidade de meses que separe < 6 meses de outras faixas da variável para ver se essa variável se torna mais relevante naquele modelo e ajuda a aumentar a performance do modelo. 
 
 
 \
@@ -1247,11 +1223,9 @@ rm(rec_trained); gc()
 
 \
 
+Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo ([etapa 5](#etapas)).
+
 Nota: reutiliza a mesma receita de *feature engineering* da árvore de decisão.
-
-\
-
-[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
 
 
 ```{r}
@@ -1276,19 +1250,60 @@ rf_fit
 
 \
 
-[Etapa 5] Testa projeções do modelo
+**Qual a acurácia, a precisão, a recall e o f1-score do modelo.?**
 
+\
 
-Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo. ([etapa 6](#etapas))
+
 
 ```{r}
+# Gera um dataset de teste com previsões:
+# Junta resultados de performance em um dataset para comparação entre modelos.
+# Gera um dataset da matriz de confusão de cada modelo
+# Grava a curva ROC do modelo
+```
+
+```{r}
+# Gera um dataset de teste com previsões:
 rf_test <- augment(rf_fit, new_data=df1_test)
+
+# Junta resultados de performance em um dataset para comparação entre modelos.
+df4_performance <- 
+   bind_rows(
+     df4_performance,
+     rf_test |> 
+       performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
+       mutate(.estimate = round(.estimate, 4),
+              model="RndFor0")
+   )
+
+# Gera um dataset da matriz de confusão de cada modelo
+df3_conf_matrix <- 
+  bind_rows(
+    df3_conf_matrix,
+    conf_mat(rf_test, truth=Churn, estimate=.pred_class) |> 
+      tidy() |> tidyConfMat() |> 
+      mutate(model="RndFor0")
+  )
+
+# Grava a curva ROC do modelo
+rf_roc_curve <- roc_curve(rf_test, truth=Churn, .pred_Churned)
 ```
 
 
 \
 
-Antes de checar performance, vamos verificar a importância das variáveis.
+Reservaremos a análise dos resultados para a [pergunta seguinte](#resultados) que fára a comparação entre todos os modelos. Por ora, apenas ressaltamos que a acurácia da Random Forest está razoável e o `roc_auc` parece indicar balanceamento aceitável entre as taxas de acerto de positivos e negativos.
+
+```{r}
+df4_performance |> filter(model=="RndFor0")
+```
+
+
+\
+
+Verifica a importância das variáveis:
 
 
 ```{r rf_vars, echo=FALSE, fig.cap="Importância das variáveis do modelo de Random Forest.", fig.width=6, fig.asp=.6}
@@ -1306,61 +1321,11 @@ rf_res_features |>
        x="Importance", y=NULL)
 ```
 
-\
+Infelizmente não é possível interpretar diretamente a magnitude da importância relativa das variáveis em um modelo Random Forest como é possível fazer no modelo de Regressão Logística. A unidade de medida aqui não tem um significado intrínseco. Essa medida serve apenas para comparar a importância entre as variáveis.
 
-**Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
+O modelo de Random Forest, confirmou as variáveis `Contract` (e.g. bianual, renovado mensalmente) e `InternetService` (e.g. fibra ótica) como bons indicadores de propensão ao cancelamento e também confirmou a variável `Tenure` que havia aparecido na árvore de decisão.
 
-
-
-```{r}
-df3_conf_matrix <- 
-  bind_rows(
-    df3_conf_matrix,
-    conf_mat(rf_test, truth=Churn, estimate=.pred_class) |> 
-      tidy() |> tidyConfMat() |> 
-      mutate(model="RndFor0")
-  )
-```
-
-
-```{r echo=FALSE, fig.asp=1, fig.width=2}
-plotConfMat(df3_conf_matrix |> filter(model=="RndFor0"))
-```
-
-\
-
-```{r echo=FALSE, fig.width=3, fig.asp=1}
-rf_roc_curve <- rf_test |> 
-  roc_curve(truth=Churn, .pred_Churned)
-
-suppressMessages(
-  print(
-    autoplot(rf_roc_curve) +
-      coord_cartesian(xlim = c(0,1), ylim=c(0,1.01), expand = FALSE) +
-      theme_light(base_size=9) +
-      labs(title="ROC curve of Random Forest model", 
-           x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
-  )
-)
-```
-\
-
-```{r}
-df4_performance <- 
-   bind_rows(
-     df4_performance,
-     rf_test |> 
-       performance_metrics(truth=Churn, estimate=.pred_class, .pred_Churned) |> 
-       mutate(.estimate = round(.estimate, 4),
-              model="RndFor0")
-   )
-```
-
-
-```{r}
-df4_performance |> 
-  filter(model=="RndFor0", .metric %in% c("accuracy", "precision", "recall", "f_meas"))
-```
+Por outro lado, as variáveis numéricas `MonthlyCharges` e `TotalCharges` surgem como novidade entre as mais relevantes. Talvez fizesse sentido investigar também a categorização dessas variáveis em faixas de valores para ver se elas se tornam mais relevantes na Regressão Logística e se melhoram a capacidade preditiva daquele modelo.
 
 \
 
@@ -1370,7 +1335,7 @@ df4_performance |>
 
 \
 
-[Etapa 3] Transforma os dados para modelagem (*Feature Engineering*)
+*Feature Engineering* transforma os dados para modelagem ([etapa 4](#etapas))
 
 ```{r}
 rec_upsample_dummy_normalize <- 
@@ -1402,9 +1367,16 @@ Checa balanceamento do Churn.
 count(rec_trained, Churn)
 ```
 
+
+
+
+```{r include=FALSE}
+rm(rec_trained); gc()
+```
+
 \
 
-[Etapa 4] Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo.
+Define especificações/ hiperparâmetros aplicáveis e ajusta (treina) o modelo ([etapa 5](#etapas)).
 
 
 ```{r}
@@ -1425,55 +1397,18 @@ nn_fit
 
 \
 
-[Etapa 5] Testa projeções do modelo
+**Qual a acurácia, a precisão, a recall e o f1-score do modelo.?**
 
+\
 
-Gera previsões sobre a base de teste e calcula medidas de performance do modelo.
+Gera previsões sobre a base de teste e calcula medidas de performance do modelo. ([etapa 6](#etapas))
+
 
 ```{r}
+# Gera um dataset de teste com previsões:
 nn_test <- augment(nn_fit, new_data=df1_test)
-```
 
-
-\
-
-**Qual a acurácia, a precisão, a recall e o f1-score do modelo?**
-
-
-```{r}
-df3_conf_matrix <- 
-  bind_rows(
-    df3_conf_matrix,
-    conf_mat(nn_test, truth=Churn, estimate=.pred_class) |> 
-      tidy() |> tidyConfMat() |> 
-      mutate(model="NNet0")
-  )
-```
-
-
-```{r echo=FALSE, fig.asp=1, fig.width=2}
-plotConfMat(df3_conf_matrix |> filter(model=="NNet0"))
-```
-
-\
-
-```{r echo=FALSE, fig.width=3, fig.asp=1}
-nn_roc_curve <- nn_test |> 
-  roc_curve(truth=Churn, .pred_Churned)
-
-suppressMessages(
-  print(
-    autoplot(nn_roc_curve) +
-      coord_cartesian(xlim = c(0,1), ylim=c(0,1.01), expand = FALSE) +
-      theme_light(base_size=9) +
-      labs(title="ROC curve of Neural Network", 
-           x="False Positive Rate (specificity)", y="True Positive Rate (sensitivity)")
-  )
-)
-```
-\
-
-```{r}
+# Junta resultados de performance em um dataset para comparação entre modelos.
 df4_performance <- 
    bind_rows(
      df4_performance,
@@ -1482,21 +1417,53 @@ df4_performance <-
        mutate(.estimate = round(.estimate, 4),
               model="NNet0")
    )
+
+# Gera um dataset da matriz de confusão de cada modelo
+df3_conf_matrix <- 
+  bind_rows(
+    df3_conf_matrix,
+    conf_mat(nn_test, truth=Churn, estimate=.pred_class) |> 
+      tidy() |> tidyConfMat() |> 
+      mutate(model="NNet0")
+  )
+
+# Grava a curva ROC do modelo
+nn_roc_curve <- roc_curve(nn_test, truth=Churn, .pred_Churned)
 ```
 
 
+\
+
+Reservaremos a análise dos resultados para a [pergunta seguinte](#resultados) que fára a comparação entre todos os modelos. Por ora, apenas ressaltamos que a acurácia da Random Forest está razoável e o `roc_auc` parece indicar balanceamento aceitável entre as taxas de acerto de positivos e negativos.
+
 ```{r}
-df4_performance |> 
-  filter(model=="NNet0", .metric %in% c("accuracy", "precision", "recall", "f_meas"))
+df4_performance |> filter(model=="NNet0")
 ```
 
 
 \
 
 
-## Melhor modelo
+## Melhor modelo {#resultados}
 
 **Em relação à questão anterior, qual o modelo deveria ser escolhido para uma eventual operação.**
+
+\
+
+A seguir visualizaremos os resultados, lembrando que as principais as medidas de performance são:
+
+* **Acurácia** (`accuracy`): proporção de acertos sobre o total de previsões.
+
+* **Recall** (também conhecido como `sensitivity` ou *True Positive Rate*): proporção de acertos positivos (TP) sobre todas as observações positivas (TP + FN).
+
+* **Especificidade** (`specificity` ou *True Negative Rate*): proporção de acertos negativos (TN) sobre todas as observações negativas (TN + FP).
+
+* **Precisão** (`precision`): proporção de acertos positivos (TP) em relação a todas as previsões positivas (TP + FP).
+
+* **F1-score** (`f_meas`): média harmônica entre precisão e recall e, portanto, é uma medida que se preocupa mais com a performance em termos de acertos positivos (TP). Não é uma boa medida para quem busca o balanceamento entre acertos positivos e negativos.
+
+* **AUC da curva ROC**: Cálculo da área abaixo da curva ROC, que mostra a relação entre a taxa de verdadeiros positivos (sensibilidade) e a taxa de falsos positivos para diferentes pontos de corte. Mede a capacidade do modelo de distinguir entre as classes (positivo vs negativo).
+
 
 ```{r echo=FALSE, fig.width=6, fig.asp=.3}
 df3_conf_matrix |> 
@@ -1506,23 +1473,44 @@ df3_conf_matrix |>
 
 \
 
-```{r}
+Na nossa análise, um resultado Positivo $P$ é a previsão de que o cliente irá cancelar o serviço (`Churned`) e um resultado Negativo $N$ é a previsão de que o cliente não irá cancelar o serviço (`Renewed`).
+
+Em termos de acurácia, nota-se que todos os modelos ficaram com acurácia próxima, sendo a Regressão Logística o modelo com menor acurácia (0,73).
+
+O modelo de Random Forest e a Regressão Logística se destacam com a melhor medida de `roc_auc` e seus valores ficam em torno de 84%, o que é um nível bem superior aos 50% (previsão aleatória) e indica um melhor balanceamento entre as classes previstas. 
+
+Avaliando a diferença entre as taxas de acerto positivo e negativo, a *True positive rate* (`recall`) é maior que a *True negative rate* (`specificity`) em todos os modelos, exceto na rede neural. De fato, olhando a matriz de confusão é fácil notar que o modelo de rede neural se destaca no acerto de negativos 1002 (TN) porém tem um desempenho bem inferior no acerto de positivos com apenas 306 (TP), mesmo com o rebalanceamento da classe positiva que era minoritária na base de treino (~26P/74N).
+
+O F1-score (`f_meas`) é baixo em todos os modelos, mas especialmente no modelo de Rede Neural. Isso indica que os modelos não estariam tão bons em acertar as previsões positivas (`Churned`), que é a classe minoritária. Isso é evidenciado pela baixa taxa de precisão ($TP/(TP+FP)$), em torno de 50%.
+
+Se eu tivesse que escolher entre um destes modelos eu optaria pelo modelo de Random Forest `RndFor0` que tem a melhor acurácia e um `roc_auc` equilibrado e equivalente ao do melhor `roc_auc`. Comparado com os outros modelos, ele ganha mais na *True Negative rate* do que perde na *True positive rate*.
+
+Mas acho que há oportunidade para experimentar algumas transformações de variáveis para ver se a performance dos modelos aumenta conforme comentado na análise dos coeficientes da regressão logística, na análise da árvore de decisão e na análise da importância das variáveis do modelo de Random Forest.
+
+Além disso, seria interessante tentar fazer um `grid search` para refinar os hiperparâmetros dos modelos de Random Forest e Rede Neural.
+
+Acredito que esses passos poderiam melhorar a performance dos modelos.
+
+
+
+```{r performanceALL, fig.cap="Comparação das métricas de performance entre os modelos", fig.width=6}
 df4_performance |> 
   mutate(
     model = factor(model, levels=c("LogReg0", "DecTree0", "RndFor0", "NNet0")),
-    .metric = factor(.metric, levels=c("f_meas", "precision", "recall", 
-                                       "roc_auc", "sensitivity", "specificity",
-                                       "accuracy", "brier_class"))
+    .metric = factor(.metric, levels=c("roc_auc", "recall", "specificity",
+                                       "accuracy", "f_meas", "precision"))
   ) |>
   ggplot(aes(x=model, y=.estimate, group=.metric)) +
   geom_line(aes(color=.metric), linewidth=.7) + geom_point(aes(color=.metric)) +
-  geom_text(aes(label=scales::number(.estimate, accuracy=.01)), vjust=-1, size=3) +
+  geom_text(aes(label=scales::number(.estimate, accuracy=.001)), vjust=-1, size=3) +
   facet_wrap(~.metric, scales="free_y", ncol=3) +
   scale_y_continuous(expand=expansion(mult=c(0.2,0.25))) +
+  scale_x_discrete(guide=guide_axis(angle=45)) +
   scale_fill_brewer(palette="Set2") +
   theme(legend.position="none",
         panel.grid.major=element_blank()) +
-  labs(title="Comparison of model metrics", 
+  labs(title="Comparação de medidas de performance entre os modelos", 
+       subtitle="Ordenados pela sequência de geração dos modelos",
        x=NULL, y=NULL)
 ```
 
@@ -1542,7 +1530,7 @@ pltROC <- function(workflow, model_name) {
 }
 
 
-p1 <- pltROC(lgreg_roc_curve, "LogReg0")
+p1 <- pltROC(lgreg_res_roc_curve, "LogReg0")
 p2 <- pltROC(tree_roc_curve, "DecTree0")
 p3 <- pltROC(rf_roc_curve, "RndFor0")
 p4 <- pltROC(nn_roc_curve, "NNet0")
